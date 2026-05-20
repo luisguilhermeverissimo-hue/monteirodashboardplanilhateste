@@ -465,6 +465,22 @@
     border-radius: 2px;
     border: 1px solid var(--line);
   }
+  .reg-table-wrap .reg-det-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--bg-elevated);
+    box-shadow: 0 1px 0 var(--line-strong);
+  }
+  .reg-table-scroll {
+    max-height: 278px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--verde) var(--line);
+  }
+  .reg-table-scroll::-webkit-scrollbar { width: 6px; }
+  .reg-table-scroll::-webkit-scrollbar-track { background: var(--line); }
+  .reg-table-scroll::-webkit-scrollbar-thumb { background: var(--verde); border-radius: 3px; }
   .reg-det-table {
     width: 100%;
     border-collapse: collapse;
@@ -765,6 +781,7 @@
         <span class="chart-badge" id="badge-registros">— registros</span>
       </div>
       <div class="reg-table-wrap">
+        <div class="reg-table-scroll">
         <table class="reg-det-table">
           <thead>
             <tr>
@@ -778,6 +795,7 @@
           </thead>
           <tbody id="reg-det-tbody"></tbody>
         </table>
+        </div><!-- /.reg-table-scroll -->
         <div class="reg-det-empty" id="reg-det-empty" style="display:none">Nenhum registro para exibir.</div>
       </div>
     </div>
