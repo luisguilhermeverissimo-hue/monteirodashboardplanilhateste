@@ -171,55 +171,72 @@
   /* ===== FILTROS ===== */
   .filter-area {
     background: var(--bg-card);
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1.5px solid var(--line);
     padding: 0 40px;
   }
-  .filter-row {
+  .filter-bar {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 16px;
     flex-wrap: wrap;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--line);
+    padding: 14px 0;
   }
-  .filter-row:last-child { border-bottom: none; }
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
   .filter-label {
     font-family: 'Jost', sans-serif;
     font-size: 10px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--ink-mute);
-    margin-right: 4px;
     white-space: nowrap;
-    width: 60px;
     flex-shrink: 0;
   }
-  .filter-pills {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    flex: 1;
+  .filter-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--bg-elevated);
+    border: 1px solid var(--line-strong);
+    color: var(--ink);
+    padding: 6px 30px 6px 12px;
+    border-radius: 4px;
+    font-family: 'Jost', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a8680'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    min-width: 130px;
   }
-  .pill {
+  .filter-select:hover { border-color: var(--verde); }
+  .filter-select:focus { outline: none; border-color: var(--verde); box-shadow: 0 0 0 2px rgba(0,104,81,0.12); }
+  .filter-select.active { border-color: var(--verde); color: var(--verde); background-color: var(--verde-soft); }
+  .filter-divider {
+    width: 1px;
+    height: 22px;
+    background: var(--line);
+    flex-shrink: 0;
+  }
+  .filter-reset {
     background: transparent;
     border: 1px solid var(--line-strong);
     color: var(--ink-mute);
-    padding: 5px 12px;
-    border-radius: 20px;
+    padding: 6px 14px;
+    border-radius: 4px;
     font-family: 'Jost', sans-serif;
     font-size: 10px;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     cursor: pointer;
     transition: all 0.15s;
     font-weight: 500;
   }
-  .pill:hover { border-color: var(--verde); color: var(--verde); }
-  .pill.active {
-    background: var(--verde);
-    border-color: var(--verde);
-    color: #fff;
-  }
-  .pill.pill-all { border-color: var(--ink-mute); }
+  .filter-reset:hover { border-color: var(--verde); color: var(--verde); }
   .filter-summary {
     margin-left: auto;
     font-family: 'Jost', sans-serif;
@@ -306,6 +323,18 @@
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
   .grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; margin-bottom: 18px; }
   .grid-full { margin-bottom: 18px; }
+  .grid-analise {
+    display: grid;
+    grid-template-columns: 1fr 1.6fr 1fr;
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+  @media (max-width: 1100px) {
+    .grid-analise { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 700px) {
+    .grid-analise { grid-template-columns: 1fr; }
+  }
 
   .chart-card {
     background: var(--bg-card);
@@ -429,37 +458,6 @@
   .cat-fill.secondary { background: var(--verde-acento); opacity: 0.75; }
   .cat-count { font-family: 'Jost', sans-serif; font-size: 11px; font-weight: 500; color: var(--verde); width: 24px; text-align: right; flex-shrink: 0; }
 
-  /* ===== RECORRENTES ===== */
-  .rec-table { width: 100%; border-collapse: collapse; }
-  .rec-table thead tr { border-bottom: 1px solid var(--line); }
-  .rec-table th {
-    font-family: 'Jost', sans-serif;
-    font-size: 9px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--ink-mute);
-    padding: 0 0 10px;
-    text-align: left;
-  }
-  .rec-table th:last-child { text-align: right; }
-  .rec-table tbody tr { border-bottom: 1px solid rgba(0,0,0,0.04); transition: background 0.1s; }
-  .rec-table tbody tr:hover { background: var(--verde-soft); }
-  .rec-table td { font-size: 12px; color: var(--ink-soft); padding: 9px 0; }
-  .rec-table td:last-child { text-align: right; }
-  .td-rank { color: var(--ink-mute); font-family: 'Jost', sans-serif; font-size: 10px; width: 24px; }
-  .td-nome { font-weight: 500; color: var(--ink); text-transform: capitalize; }
-  .badge-ret {
-    display: inline-block;
-    background: var(--verde-badge);
-    border: 1px solid rgba(0,104,81,0.2);
-    color: var(--verde);
-    font-family: 'Jost', sans-serif;
-    font-size: 10px;
-    font-weight: 500;
-    padding: 2px 9px;
-    border-radius: 2px;
-  }
 
   /* ===== TABELA REGISTRO DETALHADO ===== */
   .reg-table-wrap {
@@ -601,7 +599,7 @@
   <div class="brand-block">
     <div class="eyebrow">Monteiro e Monteiro Advogados · Direito Eleitoral</div>
     <h1 class="dash-title">Atendimentos <em>Eleitorais</em></h1>
-    <div class="dash-subtitle">Registro consolidado de atendimentos por WhatsApp, telefone e e-mail — Maio 2026</div>
+    <div class="dash-subtitle">Registro consolidado de atendimentos por WhatsApp, telefone e e-mail — Eleições 2026</div>
     <div class="live-badge"><div class="live-dot"></div> Dados ao vivo · Google Sheets</div>
     <div class="last-update" id="last-update">Última atualização: —</div>
   </div>
@@ -614,14 +612,29 @@
 
 <!-- FILTROS -->
 <div class="filter-area">
-  <div class="filter-row">
-    <span class="filter-label">Data</span>
-    <div class="filter-pills" id="pills-data"></div>
+  <div class="filter-bar">
+    <div class="filter-group">
+      <span class="filter-label">Mês</span>
+      <select class="filter-select" id="sel-mes" onchange="setMes(this.value)">
+        <option value="todos">Todos os meses</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Dia</span>
+      <select class="filter-select" id="sel-dia" onchange="setDia(this.value)">
+        <option value="todos">Todos os dias</option>
+      </select>
+    </div>
+    <div class="filter-divider"></div>
+    <div class="filter-group">
+      <span class="filter-label">Estado</span>
+      <select class="filter-select" id="sel-uf" onchange="setUF(this.value)">
+        <option value="todos">Todos os estados</option>
+      </select>
+    </div>
+    <div class="filter-divider"></div>
+    <button class="filter-reset" onclick="resetFiltros()">Limpar filtros</button>
     <div class="filter-summary" id="filter-summary">Exibindo <strong id="total-filtrado">—</strong> registros</div>
-  </div>
-  <div class="filter-row">
-    <span class="filter-label">Estado</span>
-    <div class="filter-pills" id="pills-uf"></div>
   </div>
 </div>
 
@@ -669,21 +682,37 @@
     </div>
   </div>
 
-  <!-- ESTADO + MEIO/REGIÃO -->
-  <div class="section-label">Por Estado e Canal</div>
-  <div class="grid-2">
+  <!-- ANÁLISE: ESTADO / CANAL / REGIÃO / TEMAS -->
+  <div class="section-label">Análise por Estado, Canal e Temas</div>
+  <div class="grid-analise">
 
+    <!-- Barras UF -->
     <div class="chart-card">
       <div class="chart-header-row">
         <div>
-          <div class="chart-title">Atendimentos por Estado (UF)</div>
-          <div class="chart-subtitle">Ranking de todas as UFs atendidas</div>
+          <div class="chart-title">Atendimentos por UF</div>
+          <div class="chart-subtitle">Ranking horizontal por estado</div>
         </div>
         <span class="chart-badge" id="badge-ufs">—</span>
       </div>
       <div class="bar-list" id="bar-uf"></div>
     </div>
 
+    <!-- Gráfico barras UF -->
+    <div class="chart-card">
+      <div class="chart-header-row">
+        <div>
+          <div class="chart-title">Volume por UF — Gráfico</div>
+          <div class="chart-subtitle">Comparativo entre estados</div>
+        </div>
+        <span class="chart-badge">Barras</span>
+      </div>
+      <div class="chart-wrap" style="height:260px">
+        <canvas id="chartUF"></canvas>
+      </div>
+    </div>
+
+    <!-- Coluna direita: Meio + Região + Temas -->
     <div style="display:flex;flex-direction:column;gap:18px;">
       <div class="chart-card">
         <div class="chart-header-row">
@@ -694,7 +723,7 @@
           <span class="chart-badge">2 canais</span>
         </div>
         <div class="donut-row">
-          <canvas id="chartMeio" width="130" height="130" style="flex-shrink:0"></canvas>
+          <canvas id="chartMeio" width="110" height="110" style="flex-shrink:0"></canvas>
           <div class="donut-legend" id="legend-meio"></div>
         </div>
       </div>
@@ -709,58 +738,19 @@
         </div>
         <div class="reg-list" id="reg-list"></div>
       </div>
-    </div>
 
-  </div>
-
-  <!-- TEMAS + RECORRENTES -->
-  <div class="section-label">Temas e Recorrência</div>
-  <div class="grid-3">
-
-    <div class="chart-card">
-      <div class="chart-header-row">
-        <div>
-          <div class="chart-title">Temas dos Atendimentos</div>
-          <div class="chart-subtitle">Classificação pelo campo de Observações</div>
+      <div class="chart-card">
+        <div class="chart-header-row">
+          <div>
+            <div class="chart-title">Temas dos Atendimentos</div>
+            <div class="chart-subtitle">Por campo de Observações</div>
+          </div>
+          <span class="chart-badge" id="badge-cat">— temas</span>
         </div>
-        <span class="chart-badge" id="badge-cat">— temas</span>
-      </div>
-      <div class="cat-list" id="cat-list"></div>
-    </div>
-
-    <div class="chart-card">
-      <div class="chart-header-row">
-        <div>
-          <div class="chart-title">Clientes Recorrentes</div>
-          <div class="chart-subtitle">Retornaram 2+ vezes no período</div>
-        </div>
-        <span class="chart-badge">Top 15</span>
-      </div>
-      <table class="rec-table">
-        <thead>
-          <tr><th>#</th><th>Nome</th><th>Ret.</th></tr>
-        </thead>
-        <tbody id="rec-tbody"></tbody>
-      </table>
-    </div>
-
-  </div>
-
-  <!-- GRÁFICO DE BARRAS UF -->
-  <div class="section-label">Análise por Estado — Gráfico</div>
-  <div class="grid-full">
-    <div class="chart-card">
-      <div class="chart-header-row">
-        <div>
-          <div class="chart-title">Volume de Atendimentos por UF</div>
-          <div class="chart-subtitle">Todos os estados representados no período</div>
-        </div>
-        <span class="chart-badge">Gráfico de Barras</span>
-      </div>
-      <div class="chart-wrap short">
-        <canvas id="chartUF"></canvas>
+        <div class="cat-list" id="cat-list"></div>
       </div>
     </div>
+
   </div>
 
   <!-- REGISTRO DETALHADO -->
@@ -833,7 +823,8 @@ let ROWS = [];
 let ALL_DATES = [];
 let DATE_LABELS = [];
 let ALL_UFS = [];
-let filtroData = 'todos';
+let filtroMes  = 'todos';
+let filtroDia  = 'todos';
 let filtroUF   = 'todos';
 let chartTemporal, chartMeio, chartUF;
 
@@ -1027,8 +1018,9 @@ function fmtDateBR(iso) {
 // ============================================================
 function getFiltered() {
   return ROWS.filter(r => {
-    if (filtroData !== 'todos' && r.data !== filtroData) return false;
-    if (filtroUF   !== 'todos' && r.uf   !== filtroUF)   return false;
+    if (filtroMes !== 'todos' && !r.data.startsWith(filtroMes)) return false;
+    if (filtroDia !== 'todos' && r.data !== filtroDia) return false;
+    if (filtroUF  !== 'todos' && r.uf   !== filtroUF)  return false;
     return true;
   });
 }
@@ -1083,35 +1075,55 @@ function getRegiao(uf) {
 }
 
 // ============================================================
-// FILTRO PILLS
+// FILTROS DROPDOWN
 // ============================================================
-function buildPills() {
-  const pData = document.getElementById('pills-data');
-  pData.innerHTML = '';
-  pData.appendChild(btn('Todos', 'todos', filtroData==='todos', () => setData('todos')));
-  ALL_DATES.forEach(d => {
-    const [,m,dy]=d.split('-');
-    pData.appendChild(btn(dy+'/'+m, d, filtroData===d, () => setData(d)));
-  });
+const MESES_PT = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
-  const pUF = document.getElementById('pills-uf');
-  pUF.innerHTML = '';
-  pUF.appendChild(btn('Todos', 'todos', filtroUF==='todos', () => setUF('todos')));
+function buildSelects() {
+  // --- Meses disponíveis ---
+  const meses = [...new Set(ALL_DATES.map(d => d.slice(0,7)))].sort();
+  const selMes = document.getElementById('sel-mes');
+  const curMes = selMes.value;
+  selMes.innerHTML = '<option value="todos">Todos os meses</option>';
+  meses.forEach(m => {
+    const [y, mo] = m.split('-');
+    const label = MESES_PT[parseInt(mo)] + ' ' + y;
+    selMes.innerHTML += `<option value="${m}" ${filtroMes===m?'selected':''}>${label}</option>`;
+  });
+  selMes.className = 'filter-select' + (filtroMes!=='todos'?' active':'');
+
+  // --- Dias filtrados pelo mês selecionado ---
+  const diasBase = filtroMes==='todos'
+    ? ALL_DATES
+    : ALL_DATES.filter(d => d.startsWith(filtroMes));
+  const selDia = document.getElementById('sel-dia');
+  selDia.innerHTML = '<option value="todos">Todos os dias</option>';
+  diasBase.forEach(d => {
+    const [,m,dy] = d.split('-');
+    selDia.innerHTML += `<option value="${d}" ${filtroDia===d?'selected':''}>${dy}/${m}</option>`;
+  });
+  selDia.className = 'filter-select' + (filtroDia!=='todos'?' active':'');
+
+  // --- UFs ---
+  const selUF = document.getElementById('sel-uf');
+  selUF.innerHTML = '<option value="todos">Todos os estados</option>';
   ALL_UFS.forEach(uf => {
-    pUF.appendChild(btn(uf, uf, filtroUF===uf, () => setUF(uf)));
+    selUF.innerHTML += `<option value="${uf}" ${filtroUF===uf?'selected':''}>${uf}</option>`;
   });
+  selUF.className = 'filter-select' + (filtroUF!=='todos'?' active':'');
 }
 
-function btn(label, val, active, handler) {
-  const b = document.createElement('button');
-  b.className = 'pill' + (active?' active':'') + (val==='todos'?' pill-all':'');
-  b.textContent = label;
-  b.onclick = handler;
-  return b;
+function setMes(v) {
+  filtroMes = v;
+  // Se o dia atual não pertence ao mês, reseta
+  if (v !== 'todos' && filtroDia !== 'todos' && !filtroDia.startsWith(v)) {
+    filtroDia = 'todos';
+  }
+  update();
 }
-
-function setData(v) { filtroData = v; update(); }
-function setUF(v)   { filtroUF = v;   update(); }
+function setDia(v)  { filtroDia = v; update(); }
+function setUF(v)   { filtroUF = v; update(); }
+function resetFiltros() { filtroMes='todos'; filtroDia='todos'; filtroUF='todos'; update(); }
 
 // ============================================================
 // KPIs
@@ -1230,27 +1242,6 @@ function renderCategorias(rows) {
   });
 }
 
-// ============================================================
-// RECORRENTES
-// ============================================================
-function renderRecorrentes(rows) {
-  const nc = countBy(rows, r=>r.nome.toLowerCase().trim());
-  const rec = Object.entries(nc).filter(([,v])=>v>1).sort((a,b)=>b[1]-a[1]).slice(0,15);
-  const tb = document.getElementById('rec-tbody');
-  tb.innerHTML = '';
-  if (!rec.length) {
-    tb.innerHTML = '<tr><td colspan="3" style="color:var(--ink-mute);font-size:12px;padding-top:14px;font-style:italic">Nenhum cliente recorrente neste filtro.</td></tr>';
-    return;
-  }
-  rec.forEach(([nome,cnt],i) => {
-    const nf = nome.split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
-    tb.innerHTML += `<tr>
-      <td class="td-rank">${String(i+1).padStart(2,'0')}</td>
-      <td class="td-nome">${nf}</td>
-      <td><span class="badge-ret">${cnt}×</span></td>
-    </tr>`;
-  });
-}
 
 // ============================================================
 // CHART TEMPORAL
@@ -1391,13 +1382,12 @@ function renderRegistros(rows) {
 // ============================================================
 function update() {
   const rows = getFiltered();
-  buildPills();
+  buildSelects();
   renderKPIs(rows);
   renderBarUF(rows);
   renderMeio(rows);
   renderRegioes(rows);
   renderCategorias(rows);
-  renderRecorrentes(rows);
   renderTemporal(rows);
   renderChartUF(rows);
   renderRegistros(rows);
