@@ -325,12 +325,12 @@
   .grid-full { margin-bottom: 18px; }
   .grid-analise {
     display: grid;
-    grid-template-columns: 1fr 1.6fr 1fr;
+    grid-template-columns: 1.8fr 1fr;
     gap: 18px;
     margin-bottom: 18px;
   }
   @media (max-width: 1100px) {
-    .grid-analise { grid-template-columns: 1fr 1fr; }
+    .grid-analise { grid-template-columns: 1fr; }
   }
   @media (max-width: 700px) {
     .grid-analise { grid-template-columns: 1fr; }
@@ -385,41 +385,6 @@
   .chart-wrap.tall { height: 280px; }
   .chart-wrap.short { height: 180px; }
 
-  /* ===== BARRAS HORIZONTAIS ===== */
-  .bar-list { display: flex; flex-direction: column; gap: 9px; }
-  .bar-item { display: flex; align-items: center; gap: 10px; }
-  .bar-uf-label {
-    font-family: 'Jost', sans-serif;
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--ink-soft);
-    width: 30px;
-    text-align: right;
-    flex-shrink: 0;
-  }
-  .bar-track {
-    flex: 1;
-    height: 7px;
-    background: var(--line);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-  .bar-fill {
-    height: 100%;
-    border-radius: 2px;
-    background: var(--verde);
-    transition: width 0.7s ease;
-  }
-  .bar-fill.light { background: var(--verde-acento); opacity: 0.7; }
-  .bar-count {
-    font-family: 'Jost', sans-serif;
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--verde);
-    width: 24px;
-    text-align: right;
-    flex-shrink: 0;
-  }
 
   /* ===== DONUT ===== */
   .donut-row { display: flex; align-items: center; gap: 24px; }
@@ -701,18 +666,6 @@
   <!-- ANÁLISE: ESTADO / CANAL / REGIÃO / TEMAS -->
   <div class="section-label">Análise por Estado, Canal e Temas</div>
   <div class="grid-analise">
-
-    <!-- Barras UF -->
-    <div class="chart-card">
-      <div class="chart-header-row">
-        <div>
-          <div class="chart-title">Atendimentos por UF</div>
-          <div class="chart-subtitle">Ranking horizontal por estado</div>
-        </div>
-        <span class="chart-badge" id="badge-ufs">—</span>
-      </div>
-      <div class="bar-list" id="bar-uf"></div>
-    </div>
 
     <!-- Gráfico barras UF -->
     <div class="chart-card">
@@ -1154,25 +1107,6 @@ function renderKPIs(rows) {
   document.getElementById('total-filtrado').textContent = rows.length;
 }
 
-// ============================================================
-// BARRAS UF
-// ============================================================
-function renderBarUF(rows) {
-  const byUF = countBy(rows, r=>r.uf);
-  const sorted = Object.entries(byUF).sort((a,b)=>b[1]-a[1]);
-  const max = sorted[0]?.[1]||1;
-  document.getElementById('badge-ufs').textContent = sorted.length + (sorted.length===1?' UF':' UFs');
-  const c = document.getElementById('bar-uf');
-  c.innerHTML = '';
-  sorted.forEach(([uf,cnt],i) => {
-    const pct = (cnt/max*100).toFixed(1);
-    c.innerHTML += `<div class="bar-item">
-      <span class="bar-uf-label">${uf}</span>
-      <div class="bar-track"><div class="bar-fill${i>0?' light':''}" style="width:${pct}%"></div></div>
-      <span class="bar-count">${cnt}</span>
-    </div>`;
-  });
-}
 
 // ============================================================
 // DONUT MEIO
@@ -1402,7 +1336,6 @@ function update() {
   const rows = getFiltered();
   buildSelects();
   renderKPIs(rows);
-  renderBarUF(rows);
   renderMeio(rows);
   renderRegioes(rows);
   renderCategorias(rows);
