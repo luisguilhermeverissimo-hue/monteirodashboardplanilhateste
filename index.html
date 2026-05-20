@@ -323,17 +323,22 @@
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
   .grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; margin-bottom: 18px; }
   .grid-full { margin-bottom: 18px; }
-  .grid-analise {
+  .grid-uf-meio {
     display: grid;
-    grid-template-columns: 1.8fr 1fr;
+    grid-template-columns: 2fr 1fr;
     gap: 18px;
     margin-bottom: 18px;
+    align-items: start;
   }
-  @media (max-width: 1100px) {
-    .grid-analise { grid-template-columns: 1fr; }
+  .grid-reg-temas {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 18px;
+    margin-bottom: 18px;
+    align-items: start;
   }
-  @media (max-width: 700px) {
-    .grid-analise { grid-template-columns: 1fr; }
+  @media (max-width: 960px) {
+    .grid-uf-meio, .grid-reg-temas { grid-template-columns: 1fr; }
   }
 
   .chart-card {
@@ -406,7 +411,7 @@
   /* ===== CATEGORIAS ===== */
   .cat-list {
     display: flex; flex-direction: column; gap: 8px;
-    max-height: 340px; overflow-y: auto;
+    overflow-y: visible;
     scrollbar-width: thin;
     scrollbar-color: var(--verde) var(--line);
   }
@@ -663,61 +668,63 @@
     </div>
   </div>
 
-  <!-- ANÁLISE: ESTADO / CANAL / REGIÃO / TEMAS -->
-  <div class="section-label">Análise por Estado, Canal e Temas</div>
-  <div class="grid-analise">
+  <!-- LINHA 1: Gráfico UF + Meio de Contato -->
+  <div class="section-label">Análise por Estado e Canal</div>
+  <div class="grid-uf-meio">
 
-    <!-- Gráfico barras UF -->
     <div class="chart-card">
       <div class="chart-header-row">
         <div>
-          <div class="chart-title">Volume por UF — Gráfico</div>
+          <div class="chart-title">Volume de Atendimentos por UF</div>
           <div class="chart-subtitle">Comparativo entre estados</div>
         </div>
         <span class="chart-badge">Barras</span>
       </div>
-      <div class="chart-wrap" style="height:260px">
+      <div class="chart-wrap" style="height:220px">
         <canvas id="chartUF"></canvas>
       </div>
     </div>
 
-    <!-- Coluna direita: Meio + Região + Temas -->
-    <div style="display:flex;flex-direction:column;gap:18px;">
-      <div class="chart-card">
-        <div class="chart-header-row">
-          <div>
-            <div class="chart-title">Meio de Contato</div>
-            <div class="chart-subtitle">Telefone/WhatsApp vs. E-mail</div>
-          </div>
-          <span class="chart-badge">2 canais</span>
+    <div class="chart-card">
+      <div class="chart-header-row">
+        <div>
+          <div class="chart-title">Meio de Contato</div>
+          <div class="chart-subtitle">Telefone/WhatsApp vs. E-mail</div>
         </div>
-        <div class="donut-row">
-          <canvas id="chartMeio" width="110" height="110" style="flex-shrink:0"></canvas>
-          <div class="donut-legend" id="legend-meio"></div>
-        </div>
+        <span class="chart-badge">2 canais</span>
       </div>
+      <div class="donut-row">
+        <canvas id="chartMeio" width="110" height="110" style="flex-shrink:0"></canvas>
+        <div class="donut-legend" id="legend-meio"></div>
+      </div>
+    </div>
 
-      <div class="chart-card">
-        <div class="chart-header-row">
-          <div>
-            <div class="chart-title">Distribuição Regional</div>
-            <div class="chart-subtitle">Agrupamento por macrorregião</div>
-          </div>
-          <span class="chart-badge">5 regiões</span>
-        </div>
-        <div class="reg-list" id="reg-list"></div>
-      </div>
+  </div>
 
-      <div class="chart-card">
-        <div class="chart-header-row">
-          <div>
-            <div class="chart-title">Temas dos Atendimentos</div>
-            <div class="chart-subtitle">Por campo de Observações</div>
-          </div>
-          <span class="chart-badge" id="badge-cat">— temas</span>
+  <!-- LINHA 2: Distribuição Regional + Temas -->
+  <div class="section-label">Distribuição Regional e Temas</div>
+  <div class="grid-reg-temas">
+
+    <div class="chart-card">
+      <div class="chart-header-row">
+        <div>
+          <div class="chart-title">Distribuição Regional</div>
+          <div class="chart-subtitle">Agrupamento por macrorregião</div>
         </div>
-        <div class="cat-list" id="cat-list"></div>
+        <span class="chart-badge">5 regiões</span>
       </div>
+      <div class="reg-list" id="reg-list"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header-row">
+        <div>
+          <div class="chart-title">Temas dos Atendimentos</div>
+          <div class="chart-subtitle">Classificação pelo campo de Observações</div>
+        </div>
+        <span class="chart-badge" id="badge-cat">— temas</span>
+      </div>
+      <div class="cat-list" id="cat-list"></div>
     </div>
 
   </div>
