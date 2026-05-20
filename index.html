@@ -328,7 +328,7 @@
     grid-template-columns: 2fr 1fr;
     gap: 18px;
     margin-bottom: 18px;
-    align-items: start;
+    align-items: stretch;
   }
   .grid-reg-temas {
     display: grid;
@@ -336,6 +336,20 @@
     gap: 18px;
     margin-bottom: 18px;
     align-items: start;
+  }
+  .chart-card-flex {
+    display: flex;
+    flex-direction: column;
+  }
+  .chart-card-flex .chart-wrap-flex {
+    flex: 1;
+    min-height: 180px;
+    position: relative;
+  }
+  .chart-card-donut {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
   @media (max-width: 960px) {
     .grid-uf-meio, .grid-reg-temas { grid-template-columns: 1fr; }
@@ -672,7 +686,7 @@
   <div class="section-label">Análise por Estado e Canal</div>
   <div class="grid-uf-meio">
 
-    <div class="chart-card">
+    <div class="chart-card chart-card-flex">
       <div class="chart-header-row">
         <div>
           <div class="chart-title">Volume de Atendimentos por UF</div>
@@ -680,12 +694,12 @@
         </div>
         <span class="chart-badge">Barras</span>
       </div>
-      <div class="chart-wrap" style="height:220px">
+      <div class="chart-wrap-flex">
         <canvas id="chartUF"></canvas>
       </div>
     </div>
 
-    <div class="chart-card">
+    <div class="chart-card chart-card-donut">
       <div class="chart-header-row">
         <div>
           <div class="chart-title">Meio de Contato</div>
@@ -694,7 +708,7 @@
         <span class="chart-badge">2 canais</span>
       </div>
       <div class="donut-row">
-        <canvas id="chartMeio" width="110" height="110" style="flex-shrink:0"></canvas>
+        <canvas id="chartMeio" width="130" height="130" style="flex-shrink:0"></canvas>
         <div class="donut-legend" id="legend-meio"></div>
       </div>
     </div>
