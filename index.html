@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard de Atendimentos Eleitorais — Monteiro e Monteiro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:             #f6f5f0;
+    --bg-card:        #ffffff;
+    --bg-elevated:    #faf9f5;
+    --ink:            #1a1a1a;
+    --ink-soft:       #3a3a3a;
+    --ink-mute:       #8a8680;
+    --line:           #e5e0d5;
+    --line-strong:    #ccc8be;
+    --verde:          #006851;
+    --verde-acento:   #00A170;
+    --verde-soft:     rgba(0,104,81,0.08);
+    --verde-badge:    rgba(0,104,81,0.12);
+    --prata:          #AEADB3;
+    --shadow:         0 1px 3px rgba(0,0,0,0.05), 0 4px 14px rgba(0,0,0,0.05);
+    --shadow-hover:   0 4px 8px rgba(0,0,0,0.07), 0 12px 28px rgba(0,0,0,0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Jost', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { min-height: 100vh; }
+
+  /* ===== LOADING OVERLAY ===== */
+  #loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    z-index: 9999;
+    transition: opacity 0.4s;
+  }
+  #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+  .loading-spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--line);
+    border-top-color: var(--verde);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text {
+    font-family: 'Jost', sans-serif;
+    font-size: 13px;
+    color: var(--ink-mute);
+    letter-spacing: 0.08em;
+  }
+
+  /* ===== BANNER ERRO ===== */
+  #error-banner {
+    display: none;
+    background: #fff3f3;
+    border: 1px solid #f5c6c6;
+    color: #b00;
+    font-size: 12px;
+    padding: 10px 40px;
+    text-align: center;
+    font-family: 'Jost', sans-serif;
+  }
+
+  /* ===== STATUS LIVE ===== */
+  .live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--verde);
+    font-weight: 500;
+    margin-top: 4px;
+  }
+  .live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--verde);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.4; transform: scale(0.8); }
+  }
+  .last-update {
+    font-size: 10px;
+    color: var(--ink-mute);
+    margin-top: 2px;
+    font-family: 'Jost', sans-serif;
+  }
+
+  /* ===== HEADER ===== */
+  header {
+    background: var(--bg-card);
+    border-bottom: 1.5px solid var(--ink);
+    padding: 28px 40px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  .brand-block { display: flex; flex-direction: column; gap: 6px; }
+  .eyebrow {
+    font-family: 'Jost', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .eyebrow::before {
+    content: '';
+    width: 24px;
+    height: 1.5px;
+    background: var(--verde);
+  }
+  .dash-title {
+    font-family: 'Jost', sans-serif;
+    font-weight: 300;
+    font-size: 40px;
+    letter-spacing: -0.01em;
+    line-height: 1.05;
+    margin-top: 4px;
+  }
+  .dash-title em { font-style: normal; color: var(--verde); font-weight: 700; }
+  .dash-subtitle {
+    font-family: 'Jost', sans-serif;
+    font-style: normal;
+    font-weight: 300;
+    color: var(--ink-mute);
+    font-size: 14px;
+    margin-top: 6px;
+    line-height: 1.5;
+    letter-spacing: 0.01em;
+  }
+  .meta-block {
+    text-align: right;
+    font-family: 'Jost', sans-serif;
+    font-size: 11px;
+    color: var(--ink-mute);
+    line-height: 1.8;
+  }
+  .meta-block .date-now {
+    font-size: 13px;
+    color: var(--ink);
+    font-family: 'Jost', sans-serif;
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+
+  /* ===== FILTROS ===== */
+  .filter-area {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--line);
+    padding: 0 40px;
+  }
+  .filter-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .filter-row:last-child { border-bottom: none; }
+  .filter-label {
+    font-family: 'Jost', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-right: 4px;
+    white-space: nowrap;
+    width: 60px;
+    flex-shrink: 0;
+  }
+  .filter-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex: 1;
+  }
+  .pill {
+    background: transparent;
+    border: 1px solid var(--line-strong);
+    color: var(--ink-mute);
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-family: 'Jost', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 500;
+  }
+  .pill:hover { border-color: var(--verde); color: var(--verde); }
+  .pill.active {
+    background: var(--verde);
+    border-color: var(--verde);
+    color: #fff;
+  }
+  .pill.pill-all { border-color: var(--ink-mute); }
+  .filter-summary {
+    margin-left: auto;
+    font-family: 'Jost', sans-serif;
+    font-size: 10px;
+    color: var(--ink-mute);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .filter-summary strong { color: var(--verde); }
+
+  /* ===== MAIN ===== */
+  main { padding: 32px 40px 16px; max-width: 1380px; margin: 0 auto; }
+
+  /* ===== SECTION LABEL ===== */
+  .section-label {
+    font-family: 'Jost', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
+
+  /* ===== KPI STRIP ===== */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4,1fr);
+    border: 1px solid var(--line);
+    margin-bottom: 28px;
+    background: var(--bg-card);
+    box-shadow: var(--shadow);
+  }
+  .kpi-cell {
+    padding: 24px 28px;
+    border-right: 1px solid var(--line);
+    position: relative;
+  }
+  .kpi-cell:last-child { border-right: none; }
+  .kpi-cell::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--verde);
+  }
+  .kpi-cell:nth-child(2)::before { background: var(--verde-acento); }
+  .kpi-cell:nth-child(3)::before { background: var(--prata); }
+  .kpi-cell:nth-child(4)::before { background: var(--ink); }
+  .kpi-cell-label {
+    font-family: 'Jost', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 12px;
+  }
+  .kpi-cell-value {
+    font-family: 'Jost', sans-serif;
+    font-weight: 400;
+    font-size: 40px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+  .kpi-cell:nth-child(1) .kpi-cell-value { color: var(--verde); }
+  .kpi-cell-note {
+    font-family: 'Jost', sans-serif;
+    font-style: normal;
+    font-size: 12px;
+    color: var(--ink-mute);
+    margin-top: 8px;
+  }
+
+  /* ===== CHART CARDS ===== */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+  .grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; margin-bottom: 18px; }
+  .grid-full { margin-bottom: 18px; }
+
+  .chart-card {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    padding: 24px 26px;
+    box-shadow: var(--shadow);
+    transition: box-shadow 0.2s;
+  }
+  .chart-card:hover { box-shadow: var(--shadow-hover); }
+  .chart-card.span2 { grid-column: 1 / -1; }
+
+  .chart-title {
+    font-family: 'Jost', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 4px;
+  }
+  .chart-subtitle {
+    font-family: 'Jost', sans-serif;
+    font-style: normal;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-bottom: 20px;
+  }
+  .chart-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+  }
+  .chart-header-row .chart-title { margin-bottom: 3px; }
+  .chart-header-row .chart-subtitle { margin-bottom: 0; }
+  .chart-badge {
+    font-family: 'Jost', sans-serif;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    background: var(--verde-badge);
+    color: var(--verde);
+    border: 1px solid rgba(0,104,81,0.18);
+    padding: 4px 10px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .chart-wrap { position: relative; height: 220px; }
+  .chart-wrap.tall { height: 280px; }
+  .chart-wrap.short { height: 180px; }
+
+  /* ===== BARRAS HORIZONTAIS ===== */
+  .bar-list { display: flex; flex-direction: column; gap: 9px; }
+  .bar-item { display: flex; align-items: center; gap: 10px; }
+  .bar-uf-label {
+    font-family: 'Jost', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    width: 30px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .bar-track {
+    flex: 1;
+    height: 7px;
+    background: var(--line);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--verde);
+    transition: width 0.7s ease;
+  }
+  .bar-fill.light { background: var(--verde-acento); opacity: 0.7; }
+  .bar-count {
+    font-family: 'Jost', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--verde);
+    width: 24px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* ===== DONUT ===== */
+  .donut-row { display: flex; align-items: center; gap: 24px; }
+  .donut-legend { display: flex; flex-direction: column; gap: 14px; flex: 1; }
+  .legend-item { display: flex; align-items: center; gap: 10px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .legend-text { font-size: 12px; color: var(--ink-soft); flex: 1; }
+  .legend-pct { font-family: 'Jost', sans-serif; font-size: 11px; font-weight: 500; color: var(--verde); }
+  .legend-sub { font-size: 11px; color: var(--ink-mute); padding-left: 19px; margin-top: -10px; }
+
+  /* ===== REGIÕES ===== */
+  .reg-list { display: flex; flex-direction: column; gap: 14px; }
+  .reg-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+  .reg-nome { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+  .reg-val { font-family: 'Jost', sans-serif; font-size: 11px; font-weight: 500; color: var(--verde); }
+  .reg-track { height: 5px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .reg-fill { height: 100%; border-radius: 2px; transition: width 0.7s ease; }
+
+  /* ===== CATEGORIAS ===== */
+  .cat-list {
+    display: flex; flex-direction: column; gap: 8px;
+    max-height: 340px; overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--verde) var(--line);
+  }
+  .cat-item { display: flex; align-items: center; gap: 10px; }
+  .cat-name {
+    font-size: 12px;
+    color: var(--ink-soft);
+    width: 160px;
+    flex-shrink: 0;
+  }
+  .cat-name.bold { font-weight: 600; color: var(--ink); }
+  .cat-track { flex: 1; height: 5px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .cat-fill { height: 100%; border-radius: 2px; background: var(--verde); transition: width 0.7s ease; }
+  .cat-fill.secondary { background: var(--verde-acento); opacity: 0.75; }
+  .cat-count { font-family: 'Jost', sans-serif; font-size: 11px; font-weight: 500; color: var(--verde); width: 24px; text-align: right; flex-shrink: 0; }
+
+  /* ===== RECORRENTES ===== */
+  .rec-table { width: 100%; border-collapse: collapse; }
+  .rec-table thead tr { border-bottom: 1px solid var(--line); }
+  .rec-table th {
+    font-family: 'Jost', sans-serif;
+    font-size: 9px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-mute);
+    padding: 0 0 10px;
+    text-align: left;
+  }
+  .rec-table th:last-child { text-align: right; }
+  .rec-table tbody tr { border-bottom: 1px solid rgba(0,0,0,0.04); transition: background 0.1s; }
+  .rec-table tbody tr:hover { background: var(--verde-soft); }
+  .rec-table td { font-size: 12px; color: var(--ink-soft); padding: 9px 0; }
+  .rec-table td:last-child { text-align: right; }
+  .td-rank { color: var(--ink-mute); font-family: 'Jost', sans-serif; font-size: 10px; width: 24px; }
+  .td-nome { font-weight: 500; color: var(--ink); text-transform: capitalize; }
+  .badge-ret {
+    display: inline-block;
+    background: var(--verde-badge);
+    border: 1px solid rgba(0,104,81,0.2);
+    color: var(--verde);
+    font-family: 'Jost', sans-serif;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 9px;
+    border-radius: 2px;
+  }
+
+  /* ===== TABELA REGISTRO DETALHADO ===== */
+  .reg-table-wrap {
+    overflow-x: auto;
+    border-radius: 2px;
+    border: 1px solid var(--line);
+  }
+  .reg-det-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Jost', sans-serif;
+    font-size: 12px;
+  }
+  .reg-det-table thead tr {
+    background: var(--bg-elevated);
+    border-bottom: 1.5px solid var(--line-strong);
+  }
+  .reg-det-table th {
+    font-size: 9px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-mute);
+    padding: 10px 14px;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .reg-det-table tbody tr {
+    border-bottom: 1px solid var(--line);
+    transition: background 0.12s;
+  }
+  .reg-det-table tbody tr:last-child { border-bottom: none; }
+  .reg-det-table tbody tr:hover { background: var(--verde-soft); }
+  .reg-det-table tbody tr:nth-child(even) { background: var(--bg-elevated); }
+  .reg-det-table tbody tr:nth-child(even):hover { background: var(--verde-soft); }
+  .reg-det-table td {
+    padding: 9px 14px;
+    color: var(--ink-soft);
+    vertical-align: middle;
+  }
+  .col-num  { width: 40px; }
+  .col-data { width: 88px; white-space: nowrap; }
+  .col-nome { min-width: 180px; }
+  .col-uf   { width: 44px; text-align: center; }
+  .col-meio { width: 140px; }
+  .col-obs  { min-width: 160px; color: var(--ink-mute); font-style: italic; }
+  .td-num   { color: var(--ink-mute); font-size: 10px; font-family: 'Jost', sans-serif; }
+  .td-data  { color: var(--ink-mute); font-size: 11px; white-space: nowrap; }
+  .td-nome  { font-weight: 500; color: var(--ink); }
+  .td-uf    { text-align: center; }
+  .uf-badge {
+    display: inline-block;
+    background: var(--verde-badge);
+    border: 1px solid rgba(0,104,81,0.18);
+    color: var(--verde);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 2px;
+    letter-spacing: 0.05em;
+  }
+  .canal-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 2px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .canal-tel {
+    background: rgba(0,104,81,0.08);
+    color: var(--verde);
+    border: 1px solid rgba(0,104,81,0.18);
+  }
+  .canal-email {
+    background: rgba(174,173,179,0.15);
+    color: var(--ink-soft);
+    border: 1px solid rgba(174,173,179,0.4);
+  }
+  .td-obs-text { color: var(--ink-mute); font-size: 11px; font-style: italic; }
+  .td-obs-empty { color: var(--line-strong); font-size: 11px; font-style: italic; }
+  .reg-det-empty {
+    text-align: center;
+    padding: 32px;
+    color: var(--ink-mute);
+    font-size: 12px;
+    font-style: italic;
+  }
+
+  /* ===== FOOTER ===== */
+  footer {
+    border-top: 1.5px solid var(--ink);
+    background: var(--bg-card);
+    padding: 24px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 20px;
+  }
+  .footer-brand { display: flex; flex-direction: column; gap: 3px; }
+  .footer-name { font-family: 'Jost', sans-serif; font-weight: 500; font-size: 15px; color: var(--ink); }
+  .footer-web { font-family: 'Jost', sans-serif; font-size: 11px; color: var(--verde); letter-spacing: 0.05em; }
+  .footer-contact { font-family: 'Jost', sans-serif; font-size: 11px; color: var(--ink-mute); text-align: center; line-height: 1.8; }
+  .footer-contact a { color: var(--verde); text-decoration: none; }
+  .footer-period { font-family: 'Jost', sans-serif; font-size: 10px; color: var(--ink-mute); text-align: right; line-height: 1.8; letter-spacing: 0.06em; }
+
+  @media (max-width: 960px) {
+    header { padding: 20px; }
+    main { padding: 20px; }
+    .filter-area { padding: 0 20px; }
+    .kpi-strip { grid-template-columns: 1fr 1fr; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .dash-title { font-size: 28px; }
+    footer { padding: 20px; flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOADING OVERLAY -->
+<div id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Carregando dados da planilha…</div>
+</div>
+
+<!-- BANNER DE ERRO -->
+<div id="error-banner">
+  ⚠ Não foi possível carregar os dados ao vivo. Verifique se a planilha está publicada como CSV público.
+  <a href="#" onclick="loadData()" style="color:#b00;font-weight:600;margin-left:8px">Tentar novamente</a>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="brand-block">
+    <div class="eyebrow">Monteiro e Monteiro Advogados · Direito Eleitoral</div>
+    <h1 class="dash-title">Atendimentos <em>Eleitorais</em></h1>
+    <div class="dash-subtitle">Registro consolidado de atendimentos por WhatsApp, telefone e e-mail — Maio 2026</div>
+    <div class="live-badge"><div class="live-dot"></div> Dados ao vivo · Google Sheets</div>
+    <div class="last-update" id="last-update">Última atualização: —</div>
+  </div>
+  <div class="meta-block">
+    <div class="date-now" id="data-hoje"></div>
+    <div id="meta-ufs">— UFs · Maio 2026</div>
+    <div id="meta-periodo">—</div>
+  </div>
+</header>
+
+<!-- FILTROS -->
+<div class="filter-area">
+  <div class="filter-row">
+    <span class="filter-label">Data</span>
+    <div class="filter-pills" id="pills-data"></div>
+    <div class="filter-summary" id="filter-summary">Exibindo <strong id="total-filtrado">—</strong> registros</div>
+  </div>
+  <div class="filter-row">
+    <span class="filter-label">Estado</span>
+    <div class="filter-pills" id="pills-uf"></div>
+  </div>
+</div>
+
+<main>
+
+  <!-- KPIs -->
+  <div class="section-label">Visão Geral</div>
+  <div class="kpi-strip">
+    <div class="kpi-cell">
+      <div class="kpi-cell-label">Total de Atendimentos</div>
+      <div class="kpi-cell-value" id="kpi-total">—</div>
+      <div class="kpi-cell-note">registros no período</div>
+    </div>
+    <div class="kpi-cell">
+      <div class="kpi-cell-label">Estados Atendidos</div>
+      <div class="kpi-cell-value" id="kpi-estados">—</div>
+      <div class="kpi-cell-note">unidades federativas</div>
+    </div>
+    <div class="kpi-cell">
+      <div class="kpi-cell-label">Clientes Únicos</div>
+      <div class="kpi-cell-value" id="kpi-nomes">—</div>
+      <div class="kpi-cell-note">nomes identificados</div>
+    </div>
+    <div class="kpi-cell">
+      <div class="kpi-cell-label">Dias de Atendimento</div>
+      <div class="kpi-cell-value" id="kpi-dias">—</div>
+      <div class="kpi-cell-note">dias úteis cobertos</div>
+    </div>
+  </div>
+
+  <!-- EVOLUÇÃO TEMPORAL -->
+  <div class="section-label">Evolução Temporal</div>
+  <div class="grid-full">
+    <div class="chart-card">
+      <div class="chart-header-row">
+        <div>
+          <div class="chart-title">Atendimentos por Dia</div>
+          <div class="chart-subtitle">Volume diário de registros no período monitorado</div>
+        </div>
+        <span class="chart-badge">Linha do Tempo</span>
+      </div>
+      <div class="chart-wrap short">
+        <canvas id="chartTemporal"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ESTADO + MEIO/REGIÃO -->
+  <div class="section-label">Por Estado e Canal</div>
+  <div class="grid-2">
+
+    <div class="chart-card">
+      <div class="chart-header-row">
+        <div>
+          <div class="chart-title">Atendimentos por Estado (UF)</div>
+          <div class="chart-subtitle">Ranking de todas as UFs atendidas</div>
+        </div>
+        <span class="chart-badge" id="badge-ufs">—</span>
+      </div>
+      <div class="bar-list" id="bar-uf"></div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div class="chart-card">
+        <div class="chart-header-row">
+          <div>
+            <div class="chart-title">Meio de Contato</div>
+            <div class="chart-subtitle">Telefone/WhatsApp vs. E-mail</div>
+          </div>
+          <span class="chart-badge">2 canais</span>
+        </div>
+        <div class="donut-row">
+          <canvas id="chartMeio" width="130" height="130" style="flex-shrink:0"></canvas>
+          <div class="donut-legend" id="legend-meio"></div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-header-row">
+          <div>
+            <div class="chart-title">Distribuição Regional</div>
+            <div class="chart-subtitle">Agrupamento por macrorregião</div>
+          </div>
+          <span class="chart-badge">5 regiões</span>
+        </div>
+        <div class="reg-list" id="reg-list"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TEMAS + RECORRENTES -->
+  <div class="section-label">Temas e Recorrência</div>
+  <div class="grid-3">
+
+    <div class="chart-card">
+      <div class="chart-header-row">
+        <div>
+          <div class="chart-title">Temas dos Atendimentos</div>
+          <div class="chart-subtitle">Classificação pelo campo de Observações</div>
+        </div>
+        <span class="chart-badge" id="badge-cat">— temas</span>
+      </div>
+      <div class="cat-list" id="cat-list"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header-row">
+        <div>
+          <div class="chart-title">Clientes Recorrentes</div>
+          <div class="chart-subtitle">Retornaram 2+ vezes no período</div>
+        </div>
+        <span class="chart-badge">Top 15</span>
+      </div>
+      <table class="rec-table">
+        <thead>
+          <tr><th>#</th><th>Nome</th><th>Ret.</th></tr>
+        </thead>
+        <tbody id="rec-tbody"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- GRÁFICO DE BARRAS UF -->
+  <div class="section-label">Análise por Estado — Gráfico</div>
+  <div class="grid-full">
+    <div class="chart-card">
+      <div class="chart-header-row">
+        <div>
+          <div class="chart-title">Volume de Atendimentos por UF</div>
+          <div class="chart-subtitle">Todos os estados representados no período</div>
+        </div>
+        <span class="chart-badge">Gráfico de Barras</span>
+      </div>
+      <div class="chart-wrap short">
+        <canvas id="chartUF"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- REGISTRO DETALHADO -->
+  <div class="section-label">Registro Detalhado de Atendimentos</div>
+  <div class="grid-full">
+    <div class="chart-card">
+      <div class="chart-header-row">
+        <div>
+          <div class="chart-title">Relação de Atendimentos</div>
+          <div class="chart-subtitle">Listagem completa dos registros no período filtrado</div>
+        </div>
+        <span class="chart-badge" id="badge-registros">— registros</span>
+      </div>
+      <div class="reg-table-wrap">
+        <table class="reg-det-table">
+          <thead>
+            <tr>
+              <th class="col-num">#</th>
+              <th class="col-data">Data</th>
+              <th class="col-nome">Candidato / Interessado</th>
+              <th class="col-uf">UF</th>
+              <th class="col-meio">Canal</th>
+              <th class="col-obs">Observação</th>
+            </tr>
+          </thead>
+          <tbody id="reg-det-tbody"></tbody>
+        </table>
+        <div class="reg-det-empty" id="reg-det-empty" style="display:none">Nenhum registro para exibir.</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-brand">
+    <div class="footer-name">Monteiro e Monteiro Advogados Associados</div>
+    <div class="footer-web">www.monteiro.adv.br</div>
+  </div>
+  <div class="footer-contact">
+    <a href="mailto:novo@monteiro.adv.br">novo@monteiro.adv.br</a><br>
+    81 99195.0063
+  </div>
+  <div class="footer-period" id="footer-period">
+    Período · —<br>
+    — registros · — estados
+  </div>
+</footer>
+
+<script>
+// ============================================================
+// CONFIGURAÇÃO — ÚNICA LINHA QUE VOCÊ PRECISA ALTERAR
+// ============================================================
+// Cole aqui a URL de exportação CSV da sua planilha.
+// Como obter: Arquivo → Compartilhar → Publicar na Web
+//             → selecione a aba correta → formato CSV → Publicar
+//             → copie o link gerado
+//
+// Formato esperado: https://docs.google.com/spreadsheets/d/SEU_ID/pub?gid=NUMERO_DA_ABA&single=true&output=csv
+//
+// URLs definidas abaixo em SHEET_URLS
+
+const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+
+
+// ============================================================
+// ESTADO GLOBAL
+// ============================================================
+let ROWS = [];
+let ALL_DATES = [];
+let DATE_LABELS = [];
+let ALL_UFS = [];
+let filtroData = 'todos';
+let filtroUF   = 'todos';
+let chartTemporal, chartMeio, chartUF;
+
+const VERDE        = '#006851';
+const VERDE_ACENTO = '#00A170';
+const PRATA        = '#AEADB3';
+const INK          = '#1a1a1a';
+const INK_MUTE     = '#8a8680';
+const LINE         = '#e5e0d5';
+
+// ============================================================
+// PARSE CSV
+// ============================================================
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+
+  // Detecta o separador (vírgula ou ponto e vírgula)
+  const header = lines[0];
+  const sep = header.includes(';') ? ';' : ',';
+
+  const cols = header.split(sep).map(c => c.trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]/g, ''));
+
+  // Mapeia nomes de colunas para os campos esperados
+  const idx = {
+    uf:   findCol(cols, ['uf','estado','state']),
+    meio: findCol(cols, ['meio','canal','via','channel']),
+    nome: findCol(cols, ['nome','name','cliente','client','contato']),
+    data: findCol(cols, ['data','date','dia']),
+    obs:  findCol(cols, ['obs','observacao','observacoes','observação','tema','assunto','subject'])
+  };
+
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cells = splitCSVLine(lines[i], sep);
+    if (!cells || cells.every(c => !c.trim())) continue;
+
+    const uf   = (cells[idx.uf]   || '').trim().toUpperCase();
+    const meio = (cells[idx.meio] || '').trim().toLowerCase();
+    const nome = (cells[idx.nome] || '').trim();
+    const raw  = (cells[idx.data] || '').trim();
+    const obs  = (cells[idx.obs]  || '').trim();
+
+    if (!uf && !nome) continue;
+
+    // Normaliza o meio para 'email' ou 'tel'
+    const meioNorm = meio.includes('email') || meio.includes('e-mail') ? 'email' : 'tel';
+
+    // Normaliza a data para YYYY-MM-DD
+    const data = parseDate(raw);
+    if (!data) continue;
+
+    rows.push({ uf, meio: meioNorm, nome, data, obs });
+  }
+  return rows;
+}
+
+function findCol(cols, candidates) {
+  for (const c of candidates) {
+    const i = cols.findIndex(col => col.includes(c));
+    if (i >= 0) return i;
+  }
+  return -1;
+}
+
+function splitCSVLine(line, sep) {
+  const result = [];
+  let cur = '';
+  let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQ = !inQ; }
+    else if (ch === sep && !inQ) { result.push(cur); cur = ''; }
+    else { cur += ch; }
+  }
+  result.push(cur);
+  return result;
+}
+
+function parseDate(raw) {
+  if (!raw) return null;
+  // Tenta YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  // Tenta DD/MM/YYYY
+  const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  // Tenta DD/MM/YY
+  const m2 = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+  if (m2) return `20${m2[3]}-${m2[2].padStart(2,'0')}-${m2[1].padStart(2,'0')}`;
+  return null;
+}
+
+// ============================================================
+// CARGA DE DADOS (fetch ao Google Sheets)
+// ============================================================
+// URL de publicação CSV gerada pelo Google Sheets
+const SHEET_URLS = [
+  'https://docs.google.com/spreadsheets/d/e/2PACX-1vTVc-TI37Cx51sJCdR81d7WJxm8PBu3wV7XG9IsHZGIO2i-PnRLJ2nV35BP_4es-bfGt37FsrIfXwfd/pub?gid=1927118281&single=true&output=csv',
+];
+
+async function tryFetch(url) {
+  const res = await fetch(url + '&cachebust=' + Date.now(), { cache: 'no-store' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const text = await res.text();
+  // Verifica se retornou HTML de erro (login redirect) em vez de CSV
+  if (text.trim().startsWith('<')) throw new Error('Retornou HTML — planilha não pública');
+  return text;
+}
+
+async function loadData() {
+  let text = null;
+  let usedUrl = null;
+
+  for (const url of SHEET_URLS) {
+    try {
+      text = await tryFetch(url);
+      usedUrl = url;
+      break;
+    } catch(e) {
+      console.warn('URL falhou:', url, e.message);
+    }
+  }
+
+  if (!text) {
+    console.warn('Todas as URLs falharam — exibindo dashboard vazio');
+    renderVazio();
+    return;
+  }
+
+  try {
+    const newRows = parseCSV(text);
+    if (!newRows.length) throw new Error('CSV vazio ou formato não reconhecido');
+
+    ROWS = newRows;
+    ALL_DATES = [...new Set(ROWS.map(r=>r.data))].sort();
+    DATE_LABELS = ALL_DATES.map(d => { const [,m,dy]=d.split('-'); return dy+'/'+m; });
+    ALL_UFS = [...new Set(ROWS.map(r=>r.uf))].sort();
+
+    const ufsCount = ALL_UFS.length;
+    const minDate = ALL_DATES[0] || '';
+    const maxDate = ALL_DATES[ALL_DATES.length-1] || '';
+    document.getElementById('meta-ufs').textContent = ufsCount + ' UFs · Maio 2026';
+    document.getElementById('meta-periodo').textContent = fmtDateBR(minDate) + ' – ' + fmtDateBR(maxDate);
+    document.getElementById('footer-period').innerHTML =
+      'Período · ' + fmtDateBR(minDate) + ' – ' + fmtDateBR(maxDate) +
+      '<br>' + ROWS.length + ' registros · ' + ufsCount + ' estados';
+
+    document.getElementById('last-update').textContent =
+      'Última atualização: ' + new Date().toLocaleTimeString('pt-BR');
+    document.getElementById('last-update').style.color = '';
+    document.querySelector('.live-dot').style.background = '';
+    document.getElementById('error-banner').style.display = 'none';
+    document.getElementById('loading-overlay').classList.add('hidden');
+
+    console.log('Dados carregados de:', usedUrl, '— Registros:', ROWS.length);
+    update();
+  } catch(e) {
+    console.warn('Erro ao processar CSV:', e);
+    renderVazio();
+  }
+}
+
+function renderVazio() {
+  ROWS = [];
+  ALL_DATES = [];
+  DATE_LABELS = [];
+  ALL_UFS = [];
+
+  document.getElementById('meta-ufs').textContent = '— UFs · Maio 2026';
+  document.getElementById('meta-periodo').textContent = '—';
+  document.getElementById('footer-period').innerHTML = 'Período · —<br>— registros · — estados';
+
+  document.getElementById('last-update').textContent = 'Aguardando dados da planilha…';
+  document.getElementById('last-update').style.color = '#b06000';
+  document.querySelector('.live-dot').style.background = '#b06000';
+  document.getElementById('error-banner').style.display = 'none';
+  document.getElementById('loading-overlay').classList.add('hidden');
+  update();
+}
+
+function fmtDateBR(iso) {
+  if (!iso) return '—';
+  const [y,m,d] = iso.split('-');
+  return d + '/' + m + '/' + y;
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function getFiltered() {
+  return ROWS.filter(r => {
+    if (filtroData !== 'todos' && r.data !== filtroData) return false;
+    if (filtroUF   !== 'todos' && r.uf   !== filtroUF)   return false;
+    return true;
+  });
+}
+
+function countBy(arr, fn) {
+  const m = {};
+  arr.forEach(r => { const k=fn(r); m[k]=(m[k]||0)+1; });
+  return m;
+}
+
+function classObs(obs) {
+  const o = (obs||'').toLowerCase().trim();
+  if (!o) return 'Consulta Geral';
+  if (o.includes('vaquinha')) return 'Vaquinha';
+  if (o.includes('desincompatibiliz')) return 'Desincompatibilização';
+  if (o.includes('impulsionamento')) return 'Impulsionamento';
+  if (o.includes('video')||o.includes('vídeo')) return 'Vídeos';
+  if (o.includes('cnpj')) return 'CNPJ';
+  if (o.includes('reunião')||o.includes('reuniao')) return 'Reunião';
+  if (o.includes('material')&&o.includes('distribuição')) return 'Material p/ Distribuição';
+  if (o.includes('publicações')||o.includes('publicacoes')||o.includes('publicações')) return 'Publicações';
+  if (o.includes('evento')) return 'Participação em Eventos';
+  if (o.includes('gastos')||o.includes('despesa')) return 'Gastos de Campanha';
+  if (o.includes('dupla filia')) return 'Dupla Filiação';
+  if (o.includes('certidão de filia')) return 'Certidão de Filiação';
+  if (o.includes('certid')) return 'Certidão';
+  if (o.includes('doação')||o.includes('doac')) return 'Doação';
+  if (o.includes('físico')||o.includes('fisico')||o.includes('adesivo')||o.includes('boton')||o.includes('outdoor')) return 'Material Físico';
+  if (o.includes('documento')) return 'Documentos';
+  if (o.includes('jingle')) return 'Jingle';
+  if (o.includes('denúncia')||o.includes('denuncia')) return 'Denúncia';
+  if (o.includes('afastamento')) return 'Afastamento';
+  if (o.includes('inteligência')||o.includes('inteligencia')) return 'Inteligência Artificial';
+  if (o.includes('nome')&&o.includes('campanha')) return 'Nome na Campanha';
+  if (o.includes('pré')||o.includes('período')) return 'Pré-Campanha';
+  if (o.includes('proporcional')) return 'Sistema Proporcional';
+  if (o.includes('conta')&&o.includes('reprov')) return 'Contas Reprovadas';
+  if (o.includes('live')) return 'Live';
+  return 'Outros';
+}
+
+function getRegiao(uf) {
+  const m={
+    Norte:['AC','AM','AP','PA','RO','RR','TO'],
+    Nordeste:['AL','BA','CE','MA','PB','PE','PI','RN','SE'],
+    'Centro-Oeste':['DF','GO','MS','MT'],
+    Sudeste:['ES','MG','RJ','SP'],
+    Sul:['PR','RS','SC']
+  };
+  for(const[r,ufs] of Object.entries(m)) if(ufs.includes(uf)) return r;
+  return 'Outro';
+}
+
+// ============================================================
+// FILTRO PILLS
+// ============================================================
+function buildPills() {
+  const pData = document.getElementById('pills-data');
+  pData.innerHTML = '';
+  pData.appendChild(btn('Todos', 'todos', filtroData==='todos', () => setData('todos')));
+  ALL_DATES.forEach(d => {
+    const [,m,dy]=d.split('-');
+    pData.appendChild(btn(dy+'/'+m, d, filtroData===d, () => setData(d)));
+  });
+
+  const pUF = document.getElementById('pills-uf');
+  pUF.innerHTML = '';
+  pUF.appendChild(btn('Todos', 'todos', filtroUF==='todos', () => setUF('todos')));
+  ALL_UFS.forEach(uf => {
+    pUF.appendChild(btn(uf, uf, filtroUF===uf, () => setUF(uf)));
+  });
+}
+
+function btn(label, val, active, handler) {
+  const b = document.createElement('button');
+  b.className = 'pill' + (active?' active':'') + (val==='todos'?' pill-all':'');
+  b.textContent = label;
+  b.onclick = handler;
+  return b;
+}
+
+function setData(v) { filtroData = v; update(); }
+function setUF(v)   { filtroUF = v;   update(); }
+
+// ============================================================
+// KPIs
+// ============================================================
+function renderKPIs(rows) {
+  document.getElementById('kpi-total').textContent = rows.length;
+  document.getElementById('kpi-estados').textContent = new Set(rows.map(r=>r.uf)).size;
+  document.getElementById('kpi-nomes').textContent = new Set(rows.map(r=>r.nome.toLowerCase().trim())).size;
+  document.getElementById('kpi-dias').textContent = new Set(rows.map(r=>r.data)).size;
+  document.getElementById('total-filtrado').textContent = rows.length;
+}
+
+// ============================================================
+// BARRAS UF
+// ============================================================
+function renderBarUF(rows) {
+  const byUF = countBy(rows, r=>r.uf);
+  const sorted = Object.entries(byUF).sort((a,b)=>b[1]-a[1]);
+  const max = sorted[0]?.[1]||1;
+  document.getElementById('badge-ufs').textContent = sorted.length + (sorted.length===1?' UF':' UFs');
+  const c = document.getElementById('bar-uf');
+  c.innerHTML = '';
+  sorted.forEach(([uf,cnt],i) => {
+    const pct = (cnt/max*100).toFixed(1);
+    c.innerHTML += `<div class="bar-item">
+      <span class="bar-uf-label">${uf}</span>
+      <div class="bar-track"><div class="bar-fill${i>0?' light':''}" style="width:${pct}%"></div></div>
+      <span class="bar-count">${cnt}</span>
+    </div>`;
+  });
+}
+
+// ============================================================
+// DONUT MEIO
+// ============================================================
+function renderMeio(rows) {
+  const byMeio = countBy(rows, r => r.meio==='email'?'E-mail':'Telefone/WhatsApp');
+  const labels = Object.keys(byMeio);
+  const values = Object.values(byMeio);
+  const total  = values.reduce((a,b)=>a+b,0);
+  const cores  = [VERDE, PRATA];
+
+  if (chartMeio) chartMeio.destroy();
+  chartMeio = new Chart(document.getElementById('chartMeio').getContext('2d'), {
+    type: 'doughnut',
+    data: { labels, datasets:[{ data:values, backgroundColor:cores, borderWidth:0, hoverOffset:4 }] },
+    options: {
+      cutout: '66%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: INK,
+          callbacks: { label: c => ` ${c.label}: ${c.raw} (${(c.raw/total*100).toFixed(1)}%)` }
+        }
+      }
+    }
+  });
+
+  const leg = document.getElementById('legend-meio');
+  leg.innerHTML = '';
+  labels.forEach((l,i) => {
+    const pct = (values[i]/total*100).toFixed(1);
+    leg.innerHTML += `
+      <div class="legend-item">
+        <div class="legend-dot" style="background:${cores[i]}"></div>
+        <span class="legend-text">${l}</span>
+        <span class="legend-pct">${pct}%</span>
+      </div>
+      <div class="legend-sub">${values[i]} atendimentos</div>`;
+  });
+}
+
+// ============================================================
+// REGIÕES
+// ============================================================
+function renderRegioes(rows) {
+  const byReg = countBy(rows, r=>getRegiao(r.uf));
+  const ordem = ['Sudeste','Sul','Centro-Oeste','Nordeste','Norte'];
+  const cores  = {
+    Sudeste: VERDE,
+    Sul: VERDE_ACENTO,
+    'Centro-Oeste': '#4a9e7f',
+    Nordeste: PRATA,
+    Norte: '#6b9b8a'
+  };
+  const max = Math.max(...Object.values(byReg), 1);
+  const c = document.getElementById('reg-list');
+  c.innerHTML = '';
+  ordem.forEach(r => {
+    const cnt = byReg[r]||0;
+    const pct = (cnt/max*100).toFixed(1);
+    c.innerHTML += `<div>
+      <div class="reg-header"><span class="reg-nome">${r}</span><span class="reg-val">${cnt}</span></div>
+      <div class="reg-track"><div class="reg-fill" style="width:${pct}%;background:${cores[r]||VERDE}"></div></div>
+    </div>`;
+  });
+}
+
+// ============================================================
+// CATEGORIAS
+// ============================================================
+function renderCategorias(rows) {
+  const byCat = countBy(rows, r=>classObs(r.obs));
+  const sorted = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  const max = sorted[0]?.[1]||1;
+  document.getElementById('badge-cat').textContent = sorted.length + ' temas';
+  const c = document.getElementById('cat-list');
+  c.innerHTML = '';
+  sorted.forEach(([cat,cnt],i) => {
+    const pct = (cnt/max*100).toFixed(1);
+    c.innerHTML += `<div class="cat-item">
+      <span class="cat-name${i===0?' bold':''}">${cat}</span>
+      <div class="cat-track"><div class="cat-fill${i>0?' secondary':''}" style="width:${pct}%"></div></div>
+      <span class="cat-count">${cnt}</span>
+    </div>`;
+  });
+}
+
+// ============================================================
+// RECORRENTES
+// ============================================================
+function renderRecorrentes(rows) {
+  const nc = countBy(rows, r=>r.nome.toLowerCase().trim());
+  const rec = Object.entries(nc).filter(([,v])=>v>1).sort((a,b)=>b[1]-a[1]).slice(0,15);
+  const tb = document.getElementById('rec-tbody');
+  tb.innerHTML = '';
+  if (!rec.length) {
+    tb.innerHTML = '<tr><td colspan="3" style="color:var(--ink-mute);font-size:12px;padding-top:14px;font-style:italic">Nenhum cliente recorrente neste filtro.</td></tr>';
+    return;
+  }
+  rec.forEach(([nome,cnt],i) => {
+    const nf = nome.split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+    tb.innerHTML += `<tr>
+      <td class="td-rank">${String(i+1).padStart(2,'0')}</td>
+      <td class="td-nome">${nf}</td>
+      <td><span class="badge-ret">${cnt}×</span></td>
+    </tr>`;
+  });
+}
+
+// ============================================================
+// CHART TEMPORAL
+// ============================================================
+function renderTemporal(rows) {
+  const byDate = countBy(rows, r=>r.data);
+  const values = ALL_DATES.map(d=>byDate[d]||0);
+  const maxVal = Math.max(...values, 1);
+
+  if (chartTemporal) chartTemporal.destroy();
+  const ctx = document.getElementById('chartTemporal').getContext('2d');
+  const grad = ctx.createLinearGradient(0,0,0,180);
+  grad.addColorStop(0, 'rgba(0,104,81,0.14)');
+  grad.addColorStop(1, 'rgba(0,104,81,0.0)');
+
+  chartTemporal = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: DATE_LABELS,
+      datasets: [{
+        data: values,
+        borderColor: VERDE,
+        backgroundColor: grad,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: values.map(v=>v===maxVal?VERDE:'#fff'),
+        pointBorderColor: values.map(v=>v===maxVal?VERDE:VERDE),
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: INK,
+          callbacks: { label: c => ` ${c.raw} atendimentos` }
+        }
+      },
+      scales: {
+        x: { grid:{display:false}, border:{color:LINE}, ticks:{color:INK_MUTE, font:{family:"'Jost',sans-serif",size:10,weight:'500'}} },
+        y: { grid:{color:LINE}, border:{display:false}, ticks:{color:INK_MUTE, font:{size:10}}, beginAtZero:true }
+      }
+    }
+  });
+}
+
+// ============================================================
+// CHART UF (barras)
+// ============================================================
+function renderChartUF(rows) {
+  const byUF = countBy(rows, r=>r.uf);
+  const sorted = Object.entries(byUF).sort((a,b)=>b[1]-a[1]);
+  const labels = sorted.map(([k])=>k);
+  const values = sorted.map(([,v])=>v);
+
+  if (chartUF) chartUF.destroy();
+  chartUF = new Chart(document.getElementById('chartUF').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: values.map((_,i)=>i===0?VERDE:i<3?VERDE_ACENTO:'rgba(0,104,81,0.35)'),
+        borderRadius: 2,
+        borderSkipped: false,
+        barPercentage: 0.75
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: INK,
+          callbacks: { label: c => ` ${c.raw} atendimentos` }
+        }
+      },
+      scales: {
+        x: { grid:{display:false}, border:{color:LINE}, ticks:{color:INK_MUTE, font:{family:"'Jost',sans-serif",size:10,weight:'500'}} },
+        y: { grid:{color:LINE}, border:{display:false}, ticks:{color:INK_MUTE, font:{size:10}}, beginAtZero:true }
+      }
+    }
+  });
+}
+
+// ============================================================
+// REGISTRO DETALHADO
+// ============================================================
+function renderRegistros(rows) {
+  const tbody = document.getElementById('reg-det-tbody');
+  const empty = document.getElementById('reg-det-empty');
+  const badge = document.getElementById('badge-registros');
+
+  badge.textContent = rows.length + (rows.length === 1 ? ' registro' : ' registros');
+  tbody.innerHTML = '';
+
+  if (!rows.length) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  // Ordena: data desc, depois nome asc
+  const sorted = [...rows].sort((a, b) => {
+    if (b.data !== a.data) return b.data.localeCompare(a.data);
+    return a.nome.localeCompare(b.nome);
+  });
+
+  sorted.forEach((r, i) => {
+    const nomeFormatado = r.nome.split(' ')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+
+    const canalHtml = r.meio === 'email'
+      ? '<span class="canal-badge canal-email">✉ E-mail</span>'
+      : '<span class="canal-badge canal-tel">☎ Tel / WhatsApp</span>';
+
+    const obsHtml = r.obs
+      ? `<span class="td-obs-text">${r.obs}</span>`
+      : `<span class="td-obs-empty">—</span>`;
+
+    tbody.innerHTML += `<tr>
+      <td class="td-num">${String(i + 1).padStart(2, '0')}</td>
+      <td class="td-data">${fmtDateBR(r.data)}</td>
+      <td class="td-nome">${nomeFormatado}</td>
+      <td class="td-uf"><span class="uf-badge">${r.uf}</span></td>
+      <td>${canalHtml}</td>
+      <td>${obsHtml}</td>
+    </tr>`;
+  });
+}
+
+// ============================================================
+// UPDATE GERAL
+// ============================================================
+function update() {
+  const rows = getFiltered();
+  buildPills();
+  renderKPIs(rows);
+  renderBarUF(rows);
+  renderMeio(rows);
+  renderRegioes(rows);
+  renderCategorias(rows);
+  renderRecorrentes(rows);
+  renderTemporal(rows);
+  renderChartUF(rows);
+  renderRegistros(rows);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+Chart.defaults.font.family = "'Jost', sans-serif";
+Chart.defaults.color = INK_MUTE;
+
+document.getElementById('data-hoje').textContent =
+  new Date().toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'});
+
+// Carrega dados imediatamente e agenda auto-refresh
+loadData();
+setInterval(loadData, REFRESH_INTERVAL_MS);
+</script>
+</body>
+</html>
