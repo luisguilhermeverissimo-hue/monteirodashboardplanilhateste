@@ -503,7 +503,8 @@
   .col-nome { min-width: 180px; }
   .col-uf   { width: 44px; text-align: center; }
   .col-meio { width: 140px; }
-  .col-obs  { min-width: 160px; color: var(--ink-mute); font-style: italic; }
+  .col-obs  { min-width: 160px; color: var(--ink-mute); }
+  .reg-det-table th.col-obs { font-style: normal; }
   .td-num   { color: var(--ink-mute); font-size: 10px; font-family: 'Jost', sans-serif; }
   .td-data  { color: var(--ink-mute); font-size: 11px; white-space: nowrap; }
   .td-nome  { font-weight: 500; color: var(--ink); }
@@ -945,7 +946,13 @@ function parseCSV(text) {
     if (!uf && !nome) continue;
 
     // Normaliza o meio para 'email' ou 'tel'
-    const meioNorm = meio.includes('email') || meio.includes('e-mail') ? 'email' : 'tel';
+    // Cobre: 'email', 'e-mail', 'e–mail' (travessão), '@', ou qualquer texto descritivo contendo essas variações
+    const meioNorm = (() => {
+      const m = meio.normalize('NFD').replace(/[\u0300-\u036f]/g,''); // remove acentos
+      if (m.includes('@')) return 'email';
+      if (m.replace(/[\s\-–—]/g,'').includes('email')) return 'email'; // cobre e-mail, e–mail, e mail, email
+      return 'tel';
+    })();
 
     // Normaliza a data para YYYY-MM-DD
     const data = parseDate(raw);
@@ -1164,33 +1171,90 @@ function countBy(arr, fn) {
 }
 
 function classObs(obs) {
-  const o = (obs||'').toLowerCase().trim();
-  if (!o) return 'Consulta Geral';
-  if (o.includes('vaquinha')) return 'Vaquinha';
-  if (o.includes('desincompatibiliz')) return 'Desincompatibilização';
-  if (o.includes('impulsionamento')) return 'Impulsionamento';
-  if (o.includes('video')||o.includes('vídeo')) return 'Vídeos';
-  if (o.includes('cnpj')) return 'CNPJ';
-  if (o.includes('reunião')||o.includes('reuniao')) return 'Reunião';
-  if (o.includes('material')&&o.includes('distribuição')) return 'Material p/ Distribuição';
-  if (o.includes('publicações')||o.includes('publicacoes')||o.includes('publicações')) return 'Publicações';
-  if (o.includes('evento')) return 'Participação em Eventos';
-  if (o.includes('gastos')||o.includes('despesa')) return 'Gastos de Campanha';
-  if (o.includes('dupla filia')) return 'Dupla Filiação';
-  if (o.includes('certidão de filia')) return 'Certidão de Filiação';
-  if (o.includes('certid')) return 'Certidão';
-  if (o.includes('doação')||o.includes('doac')) return 'Doação';
-  if (o.includes('físico')||o.includes('fisico')||o.includes('adesivo')||o.includes('boton')||o.includes('outdoor')) return 'Material Físico';
-  if (o.includes('documento')) return 'Documentos';
-  if (o.includes('jingle')) return 'Jingle';
-  if (o.includes('denúncia')||o.includes('denuncia')) return 'Denúncia';
-  if (o.includes('afastamento')) return 'Afastamento';
-  if (o.includes('inteligência')||o.includes('inteligencia')) return 'Inteligência Artificial';
-  if (o.includes('nome')&&o.includes('campanha')) return 'Nome na Campanha';
-  if (o.includes('pré')||o.includes('período')) return 'Pré-Campanha';
-  if (o.includes('proporcional')) return 'Sistema Proporcional';
-  if (o.includes('conta')&&o.includes('reprov')) return 'Contas Reprovadas';
-  if (o.includes('live')) return 'Live';
+  if (!obs || !obs.trim()) return 'Consulta Geral';
+
+  // Normaliza: minúsculas + remove acentos — resolve discrepâncias de encoding do Google Sheets
+  const o = obs.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .trim();
+
+  // Cada entrada: [array de palavras-chave normalizadas, rótulo]
+  // A ordem importa: mais específico primeiro
+  const regras = [
+    [['dupla filia'],                                    'Dupla Filiação'],
+    [['certidao de filia'],                              'Certidão de Filiação'],
+    [['vaquinha','financiamento coletivo'],               'Vaquinha'],
+    [['desincompatibiliz'],                              'Desincompatibilização'],
+    [['impulsionamento'],                                'Impulsionamento'],
+    [['video','videos'],                                 'Vídeos'],
+    [['cnpj'],                                           'CNPJ'],
+    [['reuniao','reuniao'],                              'Reunião'],
+    [['propaganda irregular','propaganda eleitoral'],    'Propaganda Eleitoral'],
+    [['condutas vedadas'],                               'Condutas Vedadas'],
+    [['uso da maquina','maquina publica'],               'Uso da Máquina'],
+    [['inelegibilidade','inelegivel'],                   'Inelegibilidade'],
+    [['ficha limpa'],                                    'Ficha Limpa'],
+    [['abuso de poder'],                                 'Abuso de Poder'],
+    [['captacao ilicita','captacao de sufragio','compra de voto'], 'Captação de Sufrágio'],
+    [['violencia politica','violencia de genero'],       'Violência Política'],
+    [['distribuicao'],                                   'Material p/ Distribuição'],
+    [['publicac'],                                       'Publicações'],
+    [['evento'],                                         'Participação em Eventos'],
+    [['gastos','despesa'],                               'Gastos de Campanha'],
+    [['certidao'],                                       'Certidão'],
+    [['doacao'],                                         'Doação'],
+    [['fisico','adesivo','boton','outdoor'],              'Material Físico'],
+    [['documento'],                                      'Documentos'],
+    [['jingle'],                                         'Jingle'],
+    [['denuncia','representacao'],                       'Denúncia'],
+    [['afastamento'],                                    'Afastamento'],
+    [['inteligencia artificial'],                        'Inteligência Artificial'],
+    [['live'],                                           'Live'],
+    [['nome','campanha'],                                'Nome na Campanha'],
+    [['pre-campanha','pre campanha','periodo pre'],      'Pré-Campanha'],
+    [['proporcional'],                                   'Sistema Proporcional'],
+    [['conta','reprov'],                                 'Contas Reprovadas'],
+    [['cassacao','cassac'],                              'Cassação'],
+    [['multa'],                                          'Multa'],
+    [['crime eleitoral','penal eleitoral','acao penal'], 'Penal Eleitoral'],
+    [['recurso'],                                        'Recurso'],
+    [['registro de candidatura'],                        'Registro de Candidatura'],
+    [['prestacao de contas'],                            'Prestação de Contas'],
+    [['coligacao','federacao'],                          'Coligação/Federação'],
+    [['pesquisa eleitoral'],                             'Pesquisa Eleitoral'],
+    [['debate'],                                         'Debate'],
+    [['filiacao'],                                       'Filiação Partidária'],
+    [['horario eleitoral','hgpe'],                       'HGPE'],
+    [['financiamento'],                                  'Financiamento'],
+    [['doador'],                                         'Doações'],
+    [['cabo eleitoral'],                                 'Cabos Eleitorais'],
+    [['mesario'],                                        'Mesário'],
+    [['urna','sistema eleitoral'],                       'Sistema Eleitoral'],
+  ];
+
+  for (const [keys, label] of regras) {
+    // Regras com dois termos no array e ambos sem espaço = condição AND
+    const multiWord = keys.filter(k => !k.includes(' '));
+    const singlePhrases = keys.filter(k => k.includes(' '));
+
+    // Verifica frases completas primeiro
+    if (singlePhrases.some(k => o.includes(k))) return label;
+
+    // Se a regra tem exatamente dois termos simples e são da mesma entrada: AND
+    if (multiWord.length === 2 && keys.length === 2 && !keys.some(k=>k.includes(' '))) {
+      if (multiWord.every(k => o.includes(k))) return label;
+    } else {
+      // OR entre os termos
+      if (multiWord.some(k => o.includes(k))) return label;
+    }
+  }
+
+  // Último recurso: pega o primeiro fragmento da ementa (antes do primeiro ponto)
+  const primeiroPonto = obs.split('.')[0].trim();
+  if (primeiroPonto && primeiroPonto.length >= 3 && primeiroPonto.length <= 60) {
+    return primeiroPonto;
+  }
+
   return 'Outros';
 }
 
@@ -1569,11 +1633,11 @@ function obsToTags(obs) {
     partes.slice(0, 3).forEach(p => tags.push(p));
   }
 
-  if (!tags.length) return `<span class="obs-tag" style="background:rgba(174,173,179,0.18);border:1px solid rgba(174,173,179,0.45);color:#5a5a62">${obs.slice(0,60)}${obs.length>60?'…':''}</span>`;
+  if (!tags.length) return `<span class="obs-tag" style="background:rgba(174,173,179,0.18);border:1px solid rgba(174,173,179,0.45);color:#5a5a62">${obs.slice(0,60).toUpperCase()}${obs.length>60?'…':''}</span>`;
 
   return tags.map((t, i) => {
     const p = paleta[i % paleta.length];
-    return `<span class="obs-tag" style="background:${p.bg};border:1px solid ${p.border};color:${p.color}">${t}</span>`;
+    return `<span class="obs-tag" style="background:${p.bg};border:1px solid ${p.border};color:${p.color}">${t.toUpperCase()}</span>`;
   }).join('');
 }
 
