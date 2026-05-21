@@ -550,6 +550,51 @@
     font-style: italic;
   }
 
+  /* ===== CARGO BADGE ===== */
+  .col-cargo { min-width: 130px; }
+  .cargo-badge {
+    display: inline-block;
+    background: rgba(26,26,26,0.06);
+    border: 1px solid rgba(26,26,26,0.14);
+    color: var(--ink-soft);
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 2px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  /* ===== OBS TAGS ===== */
+  .obs-tags-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+  }
+  .obs-tag {
+    display: inline-block;
+    font-size: 9.5px;
+    font-weight: 500;
+    font-style: normal;
+    padding: 2px 7px;
+    border-radius: 2px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    font-family: 'Jost', sans-serif;
+  }
+
+  /* ===== CONTENCIOSO ===== */
+  .col-proc { min-width: 180px; white-space: nowrap; }
+  .col-foro { min-width: 140px; }
+  .proc-num {
+    font-family: 'Jost', sans-serif;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    letter-spacing: 0.02em;
+  }
+
   /* ===== FOOTER ===== */
   footer {
     border-top: 1.5px solid var(--ink);
@@ -763,14 +808,46 @@
               <th class="col-data">Data</th>
               <th class="col-nome">Candidato / Interessado</th>
               <th class="col-uf">UF</th>
+              <th class="col-cargo">Cargo / Função</th>
               <th class="col-meio">Canal</th>
-              <th class="col-obs">Observação</th>
+              <th class="col-obs">Temas</th>
             </tr>
           </thead>
           <tbody id="reg-det-tbody"></tbody>
         </table>
         </div><!-- /.reg-table-scroll -->
         <div class="reg-det-empty" id="reg-det-empty" style="display:none">Nenhum registro para exibir.</div>
+      </div>
+    </div>
+  </div>
+  <!-- CONTENCIOSO -->
+  <div class="section-label">Contencioso</div>
+  <div class="grid-full">
+    <div class="chart-card">
+      <div class="chart-header-row">
+        <div>
+          <div class="chart-title">Processos em Andamento</div>
+          <div class="chart-subtitle">Relação do contencioso ativo por estado, parte e foro</div>
+        </div>
+        <span class="chart-badge" id="badge-contencioso">— processos</span>
+      </div>
+      <div class="reg-table-wrap">
+        <div class="reg-table-scroll">
+        <table class="reg-det-table">
+          <thead>
+            <tr>
+              <th class="col-num">#</th>
+              <th class="col-uf" style="text-align:left">Estado</th>
+              <th class="col-nome">Nome</th>
+              <th class="col-obs">Assunto</th>
+              <th class="col-proc">Nº do Processo</th>
+              <th class="col-foro">Foro</th>
+            </tr>
+          </thead>
+          <tbody id="cont-tbody"></tbody>
+        </table>
+        </div><!-- /.reg-table-scroll -->
+        <div class="reg-det-empty" id="cont-empty" style="display:none">Nenhum processo para exibir.</div>
       </div>
     </div>
   </div>
@@ -812,6 +889,7 @@ const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 // ESTADO GLOBAL
 // ============================================================
 let ROWS = [];
+let ROWS_CONTENCIOSO = [];
 let ALL_DATES = [];
 let DATE_LABELS = [];
 let ALL_UFS = [];
@@ -844,11 +922,12 @@ function parseCSV(text) {
 
   // Mapeia nomes de colunas para os campos esperados
   const idx = {
-    uf:   findCol(cols, ['uf','estado','state']),
-    meio: findCol(cols, ['meio','canal','via','channel']),
-    nome: findCol(cols, ['nome','name','cliente','client','contato']),
-    data: findCol(cols, ['data','date','dia']),
-    obs:  findCol(cols, ['obs','observacao','observacoes','observação','tema','assunto','subject'])
+    uf:    findCol(cols, ['uf','estado','state']),
+    meio:  findCol(cols, ['meio','canal','via','channel']),
+    nome:  findCol(cols, ['nome','name','cliente','client','contato']),
+    data:  findCol(cols, ['data','date','dia']),
+    obs:   findCol(cols, ['obs','observacao','observacoes','observação','tema','assunto','subject']),
+    cargo: findCol(cols, ['cargo','funcao','função','função','role','funcao'])
   };
 
   const rows = [];
@@ -860,7 +939,8 @@ function parseCSV(text) {
     const meio = (cells[idx.meio] || '').trim().toLowerCase();
     const nome = (cells[idx.nome] || '').trim();
     const raw  = (cells[idx.data] || '').trim();
-    const obs  = (cells[idx.obs]  || '').trim();
+    const obs   = (cells[idx.obs]   || '').trim();
+    const cargo = (cells[idx.cargo] !== undefined ? cells[idx.cargo] : '').trim();
 
     if (!uf && !nome) continue;
 
@@ -871,7 +951,46 @@ function parseCSV(text) {
     const data = parseDate(raw);
     if (!data) continue;
 
-    rows.push({ uf, meio: meioNorm, nome, data, obs });
+    rows.push({ uf, meio: meioNorm, nome, data, obs, cargo });
+  }
+  return rows;
+}
+
+// ============================================================
+// PARSE CSV — CONTENCIOSO
+// ============================================================
+function parseCSVContencioso(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+
+  const header = lines[0];
+  const sep = header.includes(';') ? ';' : ',';
+
+  const cols = header.split(sep).map(c => c.trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]/g, ''));
+
+  const idx = {
+    estado:   findCol(cols, ['estado','uf','state']),
+    nome:     findCol(cols, ['nome','name','cliente','contato','interessado','parte']),
+    assunto:  findCol(cols, ['assunto','tema','objeto','materia']),
+    processo: findCol(cols, ['processo','numero','proc','num']),
+    foro:     findCol(cols, ['foro','tribunal','vara','juizo','forum','orgao'])
+  };
+
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cells = splitCSVLine(lines[i], sep);
+    if (!cells || cells.every(c => !c.trim())) continue;
+
+    const estado   = (cells[idx.estado]   || '').trim();
+    const nome     = (cells[idx.nome]     || '').trim();
+    const assunto  = (cells[idx.assunto]  || '').trim();
+    const processo = (cells[idx.processo] || '').trim();
+    const foro     = (cells[idx.foro]     || '').trim();
+
+    if (!nome && !processo) continue;
+    rows.push({ estado, nome, assunto, processo, foro });
   }
   return rows;
 }
@@ -916,8 +1035,10 @@ function parseDate(raw) {
 // ============================================================
 // URL de publicação CSV gerada pelo Google Sheets
 const SHEET_URLS = [
-  'https://docs.google.com/spreadsheets/d/e/2PACX-1vTVc-TI37Cx51sJCdR81d7WJxm8PBu3wV7XG9IsHZGIO2i-PnRLJ2nV35BP_4es-bfGt37FsrIfXwfd/pub?gid=1927118281&single=true&output=csv',
+  'https://docs.google.com/spreadsheets/d/e/2PACX-1vTyZv4H_vCerCXXomVkoGHyo05Dl7kOmYG1AuQ8qc1TIoFOlCLXX_VqKRAc8APxZpXeUiKuhN5EoTRk/pub?gid=679125338&single=true&output=csv',
 ];
+
+const SHEET_CONTENCIOSO_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTyZv4H_vCerCXXomVkoGHyo05Dl7kOmYG1AuQ8qc1TIoFOlCLXX_VqKRAc8APxZpXeUiKuhN5EoTRk/pub?gid=1862068739&single=true&output=csv';
 
 async function tryFetch(url) {
   const res = await fetch(url + '&cachebust=' + Date.now(), { cache: 'no-store' });
@@ -942,6 +1063,14 @@ async function loadData() {
     }
   }
 
+  // Busca contencioso em paralelo (silencioso se falhar)
+  let textContencioso = null;
+  try {
+    textContencioso = await tryFetch(SHEET_CONTENCIOSO_URL);
+  } catch(e) {
+    console.warn('Contencioso URL falhou:', e.message);
+  }
+
   if (!text) {
     console.warn('Todas as URLs falharam — exibindo dashboard vazio');
     renderVazio();
@@ -956,6 +1085,16 @@ async function loadData() {
     ALL_DATES = [...new Set(ROWS.map(r=>r.data))].sort();
     DATE_LABELS = ALL_DATES.map(d => { const [,m,dy]=d.split('-'); return dy+'/'+m; });
     ALL_UFS = [...new Set(ROWS.map(r=>r.uf))].sort();
+
+    // Processa contencioso
+    if (textContencioso) {
+      try {
+        ROWS_CONTENCIOSO = parseCSVContencioso(textContencioso);
+      } catch(e) {
+        console.warn('Erro ao processar CSV do contencioso:', e);
+        ROWS_CONTENCIOSO = [];
+      }
+    }
 
     const ufsCount = ALL_UFS.length;
     const minDate = ALL_DATES[0] || '';
@@ -974,6 +1113,7 @@ async function loadData() {
     document.getElementById('loading-overlay').classList.add('hidden');
 
     console.log('Dados carregados de:', usedUrl, '— Registros:', ROWS.length);
+    console.log('Contencioso:', ROWS_CONTENCIOSO.length, 'registros');
     update();
   } catch(e) {
     console.warn('Erro ao processar CSV:', e);
@@ -1335,8 +1475,12 @@ function renderRegistros(rows) {
       ? '<span class="canal-badge canal-email">✉ E-mail</span>'
       : '<span class="canal-badge canal-tel">☎ Tel / WhatsApp</span>';
 
+    const cargoHtml = r.cargo
+      ? `<span class="cargo-badge">${r.cargo}</span>`
+      : `<span class="td-obs-empty">—</span>`;
+
     const obsHtml = r.obs
-      ? `<span class="td-obs-text">${r.obs}</span>`
+      ? `<div class="obs-tags-wrap">${obsToTags(r.obs)}</div>`
       : `<span class="td-obs-empty">—</span>`;
 
     tbody.innerHTML += `<tr>
@@ -1344,8 +1488,134 @@ function renderRegistros(rows) {
       <td class="td-data">${fmtDateBR(r.data)}</td>
       <td class="td-nome">${nomeFormatado}</td>
       <td class="td-uf"><span class="uf-badge">${r.uf}</span></td>
+      <td>${cargoHtml}</td>
       <td>${canalHtml}</td>
       <td>${obsHtml}</td>
+    </tr>`;
+  });
+}
+
+// ============================================================
+// OBS → TAGS (ementa para etiquetas)
+// ============================================================
+function obsToTags(obs) {
+  if (!obs || !obs.trim()) return '';
+
+  const o = obs.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+
+  // Mapeamento de palavras-chave → rótulo da tag
+  const mapa = [
+    [['inelegibilidade','inelegivel'],            'Inelegibilidade'],
+    [['ficha limpa'],                             'Ficha Limpa'],
+    [['abuso de poder economico','abuso de poder'],'Abuso de Poder'],
+    [['captacao ilicita','captacao de sufragio'],  'Captação de Sufrágio'],
+    [['violencia politica','violencia de genero'], 'Violência Política'],
+    [['propaganda irregular','propaganda eleitoral'],'Propaganda'],
+    [['condutas vedadas'],                         'Condutas Vedadas'],
+    [['uso da maquina','maquina publica'],          'Máquina Pública'],
+    [['vaquinha','financiamento coletivo'],         'Vaquinha'],
+    [['desincompatibiliz'],                        'Desincompatibilização'],
+    [['impulsionamento'],                          'Impulsionamento'],
+    [['video','videos'],                           'Vídeos'],
+    [['cnpj'],                                     'CNPJ'],
+    [['material','distribuicao'],                  'Material'],
+    [['publicac'],                                 'Publicações'],
+    [['evento'],                                   'Eventos'],
+    [['gastos','despesa'],                         'Gastos'],
+    [['dupla filia'],                              'Dupla Filiação'],
+    [['certidao de filia'],                        'Certidão Filiação'],
+    [['certidao'],                                 'Certidão'],
+    [['doacao'],                                   'Doação'],
+    [['fisico','adesivo','outdoor','boton'],        'Material Físico'],
+    [['jingle'],                                   'Jingle'],
+    [['denuncia','representacao'],                 'Denúncia'],
+    [['afastamento'],                              'Afastamento'],
+    [['inteligencia artificial'],                  'IA'],
+    [['live'],                                     'Live'],
+    [['cassa','cassacao'],                         'Cassação'],
+    [['multa'],                                    'Multa'],
+    [['crime eleitoral','penal eleitoral'],         'Penal Eleitoral'],
+    [['recurso'],                                  'Recurso'],
+    [['registro de candidatura','registro'],        'Registro'],
+    [['prestacao de contas','contas'],              'Contas'],
+    [['coligacao','federacao'],                    'Coligação/Federação'],
+    [['pesquisa'],                                 'Pesquisa Eleitoral'],
+    [['reuniao'],                                  'Reunião'],
+    [['debate'],                                   'Debate'],
+  ];
+
+  // Paleta de cores para as tags (cicla)
+  const paleta = [
+    { bg: 'rgba(0,104,81,0.10)',  border: 'rgba(0,104,81,0.28)',  color: '#006851' },
+    { bg: 'rgba(0,161,112,0.10)', border: 'rgba(0,161,112,0.28)', color: '#007a55' },
+    { bg: 'rgba(174,173,179,0.18)', border: 'rgba(174,173,179,0.45)', color: '#5a5a62' },
+    { bg: 'rgba(26,26,26,0.07)',  border: 'rgba(26,26,26,0.18)',  color: '#3a3a3a' },
+  ];
+
+  const tags = [];
+  const usadas = new Set();
+
+  for (const [keys, label] of mapa) {
+    if (usadas.has(label)) continue;
+    if (keys.some(k => o.includes(k))) {
+      tags.push(label);
+      usadas.add(label);
+    }
+  }
+
+  // Divide a ementa por pontos para extrair termos não mapeados como tags brutas
+  if (tags.length === 0) {
+    const partes = obs.split(/\.\s+/).map(p => p.trim()).filter(p => p.length > 2 && p.length < 50);
+    partes.slice(0, 3).forEach(p => tags.push(p));
+  }
+
+  if (!tags.length) return `<span class="obs-tag" style="background:rgba(174,173,179,0.18);border:1px solid rgba(174,173,179,0.45);color:#5a5a62">${obs.slice(0,60)}${obs.length>60?'…':''}</span>`;
+
+  return tags.map((t, i) => {
+    const p = paleta[i % paleta.length];
+    return `<span class="obs-tag" style="background:${p.bg};border:1px solid ${p.border};color:${p.color}">${t}</span>`;
+  }).join('');
+}
+
+// ============================================================
+// CONTENCIOSO
+// ============================================================
+function renderContencioso(rows) {
+  const tbody = document.getElementById('cont-tbody');
+  const empty = document.getElementById('cont-empty');
+  const badge = document.getElementById('badge-contencioso');
+
+  if (!tbody) return;
+
+  badge.textContent = rows.length + (rows.length === 1 ? ' processo' : ' processos');
+  tbody.innerHTML = '';
+
+  if (!rows.length) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  rows.forEach((r, i) => {
+    const nomeFormatado = r.nome.split(' ')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+
+    const estadoHtml = r.estado
+      ? `<span class="uf-badge">${r.estado.toUpperCase()}</span>`
+      : `<span style="color:var(--line-strong)">—</span>`;
+
+    const procHtml = r.processo
+      ? `<span class="proc-num">${r.processo}</span>`
+      : `<span style="color:var(--line-strong)">—</span>`;
+
+    tbody.innerHTML += `<tr>
+      <td class="td-num">${String(i + 1).padStart(2, '0')}</td>
+      <td class="td-uf" style="text-align:left">${estadoHtml}</td>
+      <td class="td-nome">${nomeFormatado || '—'}</td>
+      <td class="td-obs-text">${r.assunto || '—'}</td>
+      <td>${procHtml}</td>
+      <td class="td-obs-text">${r.foro || '—'}</td>
     </tr>`;
   });
 }
@@ -1363,6 +1633,7 @@ function update() {
   renderTemporal(rows);
   renderChartUF(rows);
   renderRegistros(rows);
+  renderContencioso(ROWS_CONTENCIOSO);
 }
 
 // ============================================================
