@@ -1411,8 +1411,10 @@ function renderCategorias(rows) {
   c.innerHTML = '';
   sorted.forEach(([cat,cnt],i) => {
     const pct = (cnt/max*100).toFixed(1);
+    // Title Case: primeira letra de cada palavra em maiúsculo, demais em minúsculo
+    const catFmt = cat.replace(/\S+/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
     c.innerHTML += `<div class="cat-item">
-      <span class="cat-name${i===0?' bold':''}">${cat}</span>
+      <span class="cat-name${i===0?' bold':''}">${catFmt}</span>
       <div class="cat-track"><div class="cat-fill${i>0?' secondary':''}" style="width:${pct}%"></div></div>
       <span class="cat-count">${cnt}</span>
     </div>`;
