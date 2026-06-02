@@ -3,933 +3,1717 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SINDUPE — Portal de Reajuste Salarial LC 545/2024</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>Dashboard de Atendimentos Eleitorais — Monteiro e Monteiro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:             #f6f5f0;
+    --bg-card:        #ffffff;
+    --bg-elevated:    #faf9f5;
+    --ink:            #1a1a1a;
+    --ink-soft:       #3a3a3a;
+    --ink-mute:       #8a8680;
+    --line:           #e5e0d5;
+    --line-strong:    #ccc8be;
+    --verde:          #006851;
+    --verde-acento:   #00A170;
+    --verde-soft:     rgba(0,104,81,0.08);
+    --verde-badge:    rgba(0,104,81,0.12);
+    --prata:          #AEADB3;
+    --shadow:         0 1px 3px rgba(0,0,0,0.05), 0 4px 14px rgba(0,0,0,0.05);
+    --shadow-hover:   0 4px 8px rgba(0,0,0,0.07), 0 12px 28px rgba(0,0,0,0.08);
+  }
 
-:root {
-  --red: #C8102E;
-  --red-dark: #9e0c23;
-  --red-light: #fdeaed;
-  --red-mid: #e8405a;
-  --navy: #1A3A6B;
-  --navy-dark: #102547;
-  --navy-light: #e8edf5;
-  --navy-mid: #2e5499;
-  --white: #ffffff;
-  --gray-50: #f8f8f6;
-  --gray-100: #f0efeb;
-  --gray-200: #e2e1dc;
-  --gray-400: #9a9992;
-  --gray-600: #5a5955;
-  --gray-900: #1a1a18;
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-}
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Jost', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { min-height: 100vh; }
 
-body {
-  font-family: 'IBM Plex Sans', sans-serif;
-  background: var(--gray-50);
-  color: var(--gray-900);
-  min-height: 100vh;
-  font-size: 15px;
-  line-height: 1.6;
-}
+  /* ===== LOADING OVERLAY ===== */
+  #loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    z-index: 9999;
+    transition: opacity 0.4s;
+  }
+  #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+  .loading-spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--line);
+    border-top-color: var(--verde);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text {
+    font-family: 'Jost', sans-serif;
+    font-size: 13px;
+    color: var(--ink-mute);
+    letter-spacing: 0.08em;
+  }
 
-/* HEADER */
-.site-header {
-  background: var(--navy-dark);
-  padding: 0;
-  border-bottom: 3px solid var(--red);
-}
-.header-inner {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 1.25rem 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-.header-text h1 {
-  font-size: 17px; font-weight: 600;
-  color: #fff; line-height: 1.2;
-}
-.header-text p {
-  font-size: 12px; color: rgba(255,255,255,0.6);
-  margin-top: 3px;
-}
-.header-badge {
-  margin-left: auto;
-  background: var(--red);
-  color: #fff;
-  font-size: 11px; font-weight: 500;
-  padding: 4px 10px;
-  border-radius: 20px;
-  white-space: nowrap;
-}
+  /* ===== BANNER ERRO ===== */
+  #error-banner {
+    display: none;
+    background: #fff3f3;
+    border: 1px solid #f5c6c6;
+    color: #b00;
+    font-size: 12px;
+    padding: 10px 40px;
+    text-align: center;
+    font-family: 'Jost', sans-serif;
+  }
 
-/* TABS */
-.tabs-bar {
-  background: var(--navy);
-  max-width: 100%;
-}
-.tabs-inner {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 0 1.5rem;
-  display: flex;
-  gap: 0;
-}
-.tab-btn {
-  background: none; border: none; cursor: pointer;
-  font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 13px; font-weight: 500;
-  color: rgba(255,255,255,0.6);
-  padding: 12px 20px;
-  border-bottom: 3px solid transparent;
-  transition: color 0.15s, border-color 0.15s;
-  display: flex; align-items: center; gap: 7px;
-}
-.tab-btn:hover { color: rgba(255,255,255,0.9); }
-.tab-btn.active { color: #fff; border-bottom-color: var(--red); }
-.tab-btn svg { width: 16px; height: 16px; fill: currentColor; flex-shrink: 0; }
+  /* ===== STATUS LIVE ===== */
+  .live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--verde);
+    font-weight: 500;
+    margin-top: 4px;
+  }
+  .live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--verde);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.4; transform: scale(0.8); }
+  }
+  .last-update {
+    font-size: 10px;
+    color: var(--ink-mute);
+    margin-top: 2px;
+    font-family: 'Jost', sans-serif;
+  }
 
-/* MAIN */
-.main { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
+  /* ===== HEADER ===== */
+  header {
+    background: var(--bg-card);
+    border-bottom: 1.5px solid var(--ink);
+    padding: 28px 40px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  .brand-block { display: flex; flex-direction: column; gap: 6px; }
+  .eyebrow {
+    font-family: 'Jost', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .eyebrow::before {
+    content: '';
+    width: 24px;
+    height: 1.5px;
+    background: var(--verde);
+  }
+  .dash-title {
+    font-family: 'Jost', sans-serif;
+    font-weight: 300;
+    font-size: 40px;
+    letter-spacing: -0.01em;
+    line-height: 1.05;
+    margin-top: 4px;
+  }
+  .dash-title em { font-style: normal; color: var(--verde); font-weight: 700; }
+  .dash-subtitle {
+    font-family: 'Jost', sans-serif;
+    font-style: normal;
+    font-weight: 300;
+    color: var(--ink-mute);
+    font-size: 14px;
+    margin-top: 6px;
+    line-height: 1.5;
+    letter-spacing: 0.01em;
+  }
+  .meta-block {
+    text-align: right;
+    font-family: 'Jost', sans-serif;
+    font-size: 11px;
+    color: var(--ink-mute);
+    line-height: 1.8;
+  }
+  .meta-block .date-now {
+    font-size: 13px;
+    color: var(--ink);
+    font-family: 'Jost', sans-serif;
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
 
-.tab-panel { display: none; }
-.tab-panel.active { display: block; }
+  /* ===== FILTROS ===== */
+  .filter-area {
+    background: var(--bg-card);
+    border-bottom: 1.5px solid var(--line);
+    padding: 0 40px;
+  }
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 14px 0;
+  }
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .filter-label {
+    font-family: 'Jost', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .filter-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--bg-elevated);
+    border: 1px solid var(--line-strong);
+    color: var(--ink);
+    padding: 6px 30px 6px 12px;
+    border-radius: 4px;
+    font-family: 'Jost', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a8680'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    min-width: 130px;
+  }
+  .filter-select:hover { border-color: var(--verde); }
+  .filter-select:focus { outline: none; border-color: var(--verde); box-shadow: 0 0 0 2px rgba(0,104,81,0.12); }
+  .filter-select.active { border-color: var(--verde); color: var(--verde); background-color: var(--verde-soft); }
+  .filter-divider {
+    width: 1px;
+    height: 22px;
+    background: var(--line);
+    flex-shrink: 0;
+  }
+  .filter-reset {
+    background: transparent;
+    border: 1px solid var(--line-strong);
+    color: var(--ink-mute);
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-family: 'Jost', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 500;
+  }
+  .filter-reset:hover { border-color: var(--verde); color: var(--verde); }
+  .filter-summary {
+    margin-left: auto;
+    font-family: 'Jost', sans-serif;
+    font-size: 10px;
+    color: var(--ink-mute);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .filter-summary strong { color: var(--verde); }
 
-/* SECTION TITLE */
-.section-title {
-  font-size: 13px; font-weight: 600; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--navy);
-  margin-bottom: 1rem;
-  display: flex; align-items: center; gap: 8px;
-}
-.section-title::before {
-  content: '';
-  display: block;
-  width: 3px; height: 16px;
-  background: var(--red);
-  border-radius: 2px;
-}
+  /* ===== MAIN ===== */
+  main { padding: 32px 40px 16px; max-width: 1380px; margin: 0 auto; }
 
-/* CALCULATOR */
-.calc-card {
-  background: var(--white);
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-lg);
-  padding: 1.5rem;
-  margin-bottom: 1rem;
-}
-.period-block {
-  background: var(--white);
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-lg);
-  margin-bottom: 1rem;
-  overflow: hidden;
-}
-.period-block-header {
-  background: var(--navy-light);
-  border-bottom: 1px solid #c4d0e8;
-  padding: 10px 16px;
-  display: flex; align-items: center; justify-content: space-between;
-}
-.period-block-title {
-  font-size: 12px; font-weight: 600;
-  color: var(--navy); text-transform: uppercase; letter-spacing: 0.07em;
-}
-.same-as-prev {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 12px; color: var(--gray-600); cursor: pointer;
-  user-select: none;
-}
-.same-as-prev input[type=checkbox] { cursor: pointer; accent-color: var(--navy); }
-.period-block-body { padding: 1rem 1.25rem; }
-.period-block-body.locked {
-  opacity: 0.5; pointer-events: none;
-}
-.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.field-full { grid-column: 1 / -1; }
-.field-label {
-  display: block;
-  font-size: 11px; font-weight: 600;
-  color: var(--gray-600);
-  text-transform: uppercase; letter-spacing: 0.07em;
-  margin-bottom: 6px;
-}
-select {
-  width: 100%;
-  font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 14px;
-  color: var(--gray-900);
-  background: var(--white);
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-sm);
-  padding: 9px 12px;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%239a9992' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  cursor: pointer;
-  transition: border-color 0.15s;
-}
-select:focus { outline: none; border-color: var(--navy-mid); }
-select:hover { border-color: var(--gray-400); }
+  /* ===== SECTION LABEL ===== */
+  .section-label {
+    font-family: 'Jost', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
 
-.btn-calc {
-  width: 100%; margin-top: 6px;
-  background: var(--navy);
-  color: #fff;
-  font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 14px; font-weight: 600;
-  border: none; border-radius: var(--radius-sm);
-  padding: 11px 20px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.btn-calc:hover { background: var(--navy-dark); }
-.btn-calc:active { transform: scale(0.99); }
+  /* ===== KPI STRIP ===== */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4,1fr);
+    border: 1px solid var(--line);
+    margin-bottom: 28px;
+    background: var(--bg-card);
+    box-shadow: var(--shadow);
+  }
+  .kpi-cell {
+    padding: 24px 28px;
+    border-right: 1px solid var(--line);
+    position: relative;
+  }
+  .kpi-cell:last-child { border-right: none; }
+  .kpi-cell::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--verde);
+  }
+  .kpi-cell:nth-child(2)::before { background: var(--verde-acento); }
+  .kpi-cell:nth-child(3)::before { background: var(--prata); }
+  .kpi-cell:nth-child(4)::before { background: var(--ink); }
+  .kpi-cell-label {
+    font-family: 'Jost', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 12px;
+  }
+  .kpi-cell-value {
+    font-family: 'Jost', sans-serif;
+    font-weight: 400;
+    font-size: 40px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+  .kpi-cell:nth-child(1) .kpi-cell-value { color: var(--verde); }
+  .kpi-cell-note {
+    font-family: 'Jost', sans-serif;
+    font-style: normal;
+    font-size: 12px;
+    color: var(--ink-mute);
+    margin-top: 8px;
+  }
 
-.error-bar {
-  display: none;
-  background: var(--red-light);
-  border: 1px solid var(--red-mid);
-  border-radius: var(--radius-sm);
-  padding: 9px 14px;
-  font-size: 13px; color: var(--red-dark);
-  margin-top: 10px;
-}
-.error-bar.show { display: block; }
+  /* ===== CHART CARDS ===== */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+  .grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; margin-bottom: 18px; }
+  .grid-full { margin-bottom: 18px; }
+  .grid-uf-meio {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 18px;
+    margin-bottom: 18px;
+    align-items: stretch;
+  }
+  .grid-reg-temas {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 18px;
+    margin-bottom: 18px;
+    align-items: start;
+  }
+  .chart-card-flex {
+    display: flex;
+    flex-direction: column;
+  }
+  .chart-card-flex .chart-wrap-flex {
+    flex: 1;
+    min-height: 180px;
+    position: relative;
+  }
+  .chart-card-donut {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  @media (max-width: 960px) {
+    .grid-uf-meio, .grid-reg-temas { grid-template-columns: 1fr; }
+  }
 
-/* RESULT */
-.result-section { display: none; }
-.result-section.show { display: block; }
+  .chart-card {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    padding: 24px 26px;
+    box-shadow: var(--shadow);
+    transition: box-shadow 0.2s;
+  }
+  .chart-card:hover { box-shadow: var(--shadow-hover); }
+  .chart-card.span2 { grid-column: 1 / -1; }
 
-.result-header {
-  background: var(--navy-light);
-  border: 1px solid #c4d0e8;
-  border-radius: var(--radius-md);
-  padding: 12px 16px;
-  margin-bottom: 14px;
-}
-.result-header p { font-size: 13px; color: var(--gray-600); margin: 0; }
-.result-header strong { color: var(--navy); font-weight: 600; }
+  .chart-title {
+    font-family: 'Jost', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 4px;
+  }
+  .chart-subtitle {
+    font-family: 'Jost', sans-serif;
+    font-style: normal;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-bottom: 20px;
+  }
+  .chart-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+  }
+  .chart-header-row .chart-title { margin-bottom: 3px; }
+  .chart-header-row .chart-subtitle { margin-bottom: 0; }
+  .chart-badge {
+    font-family: 'Jost', sans-serif;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    background: var(--verde-badge);
+    color: var(--verde);
+    border: 1px solid rgba(0,104,81,0.18);
+    padding: 4px 10px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .chart-wrap { position: relative; height: 220px; }
+  .chart-wrap.tall { height: 280px; }
+  .chart-wrap.short { height: 180px; }
 
-.salary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-bottom: 14px;
-}
-.sal-card {
-  background: var(--white);
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-md);
-  padding: 14px 12px;
-  text-align: center;
-}
-.sal-card.highlight {
-  border: 2px solid var(--navy);
-  background: var(--navy-light);
-}
-.sal-period {
-  font-size: 10px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.07em;
-  color: var(--gray-400); margin-bottom: 6px;
-}
-.sal-card.highlight .sal-period { color: var(--navy); }
-.sal-value {
-  font-size: 18px; font-weight: 600;
-  color: var(--gray-900); font-family: 'IBM Plex Mono', monospace;
-}
-.sal-card.highlight .sal-value { color: var(--navy); }
-.sal-delta {
-  font-size: 11px; color: #2a7a4a;
-  margin-top: 5px; font-weight: 500;
-}
-.sal-card.highlight .sal-delta { color: var(--navy-mid); }
 
-.plantao-card {
-  background: var(--white);
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-md);
-  padding: 14px 16px;
-}
-.plantao-title {
-  font-size: 12px; font-weight: 600;
-  color: var(--gray-600); text-transform: uppercase;
-  letter-spacing: 0.06em; margin-bottom: 10px;
-}
-.plantao-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
-.plantao-item { text-align: center; }
-.plantao-label { font-size: 11px; color: var(--gray-400); }
-.plantao-val { font-size: 15px; font-weight: 600; color: var(--gray-900); font-family: 'IBM Plex Mono', monospace; }
+  /* ===== DONUT ===== */
+  .donut-row { display: flex; align-items: center; gap: 24px; }
+  .donut-legend { display: flex; flex-direction: column; gap: 14px; flex: 1; }
+  .legend-item { display: flex; align-items: center; gap: 10px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .legend-text { font-size: 12px; color: var(--ink-soft); flex: 1; }
+  .legend-pct { font-family: 'Jost', sans-serif; font-size: 11px; font-weight: 500; color: var(--verde); }
+  .legend-sub { font-size: 11px; color: var(--ink-mute); padding-left: 19px; margin-top: -10px; }
 
-.note {
-  font-size: 12px; color: var(--gray-400);
-  line-height: 1.6; margin-top: 12px;
-  padding-left: 10px;
-  border-left: 2px solid var(--gray-200);
-}
+  /* ===== REGIÕES ===== */
+  .reg-list { display: flex; flex-direction: column; gap: 14px; }
+  .reg-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+  .reg-nome { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+  .reg-val { font-family: 'Jost', sans-serif; font-size: 11px; font-weight: 500; color: var(--verde); }
+  .reg-track { height: 5px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .reg-fill { height: 100%; border-radius: 2px; transition: width 0.7s ease; }
 
-/* GUIDE */
-.guide-block {
-  background: var(--white);
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  margin-bottom: 10px;
-}
-.guide-block-header {
-  display: flex; align-items: center; gap: 12px;
-  padding: 14px 18px;
-  cursor: pointer;
-  user-select: none;
-  transition: background 0.12s;
-}
-.guide-block-header:hover { background: var(--gray-50); }
-.gb-num {
-  width: 26px; height: 26px;
-  background: var(--navy);
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 600; color: #fff;
-  flex-shrink: 0;
-}
-.gb-title {
-  font-size: 14px; font-weight: 600;
-  color: var(--gray-900); flex: 1;
-}
-.gb-chev {
-  width: 18px; height: 18px;
-  fill: var(--gray-400);
-  transition: transform 0.2s;
-  flex-shrink: 0;
-}
-.guide-block-header.open .gb-chev { transform: rotate(180deg); }
-.guide-block-header.open .gb-num { background: var(--red); }
+  /* ===== CATEGORIAS ===== */
+  .cat-list {
+    display: flex; flex-direction: column; gap: 8px;
+    overflow-y: visible;
+    scrollbar-width: thin;
+    scrollbar-color: var(--verde) var(--line);
+  }
+  .cat-item { display: flex; align-items: center; gap: 10px; }
+  .cat-name {
+    font-size: 12px;
+    color: var(--ink-soft);
+    width: 160px;
+    flex-shrink: 0;
+  }
+  .cat-name.bold { font-weight: 600; color: var(--ink); }
+  .cat-track { flex: 1; height: 5px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .cat-fill { height: 100%; border-radius: 2px; background: var(--verde); transition: width 0.7s ease; }
+  .cat-fill.secondary { background: var(--verde-acento); opacity: 0.75; }
+  .cat-count { font-family: 'Jost', sans-serif; font-size: 11px; font-weight: 500; color: var(--verde); width: 24px; text-align: right; flex-shrink: 0; }
 
-.guide-block-body {
-  display: none;
-  padding: 0 18px 18px;
-  border-top: 1px solid var(--gray-100);
-}
-.guide-block-body.open { display: block; }
 
-.guide-block-body p {
-  font-size: 14px; line-height: 1.75;
-  color: var(--gray-900); margin-top: 14px;
-}
+  /* ===== TABELA REGISTRO DETALHADO ===== */
+  .reg-table-wrap {
+    overflow-x: auto;
+    border-radius: 2px;
+    border: 1px solid var(--line);
+  }
+  .reg-table-wrap .reg-det-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--bg-elevated);
+    box-shadow: 0 1px 0 var(--line-strong);
+  }
+  .reg-table-scroll {
+    max-height: 278px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--verde) var(--line);
+  }
+  .reg-table-scroll::-webkit-scrollbar { width: 6px; }
+  .reg-table-scroll::-webkit-scrollbar-track { background: var(--line); }
+  .reg-table-scroll::-webkit-scrollbar-thumb { background: var(--verde); border-radius: 3px; }
+  .reg-det-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Jost', sans-serif;
+    font-size: 12px;
+  }
+  .reg-det-table thead tr {
+    background: var(--bg-elevated);
+    border-bottom: 1.5px solid var(--line-strong);
+  }
+  .reg-det-table th {
+    font-size: 9px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-mute);
+    padding: 10px 14px;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .reg-det-table tbody tr {
+    border-bottom: 1px solid var(--line);
+    transition: background 0.12s;
+  }
+  .reg-det-table tbody tr:last-child { border-bottom: none; }
+  .reg-det-table tbody tr:hover { background: var(--verde-soft); }
+  .reg-det-table tbody tr:nth-child(even) { background: var(--bg-elevated); }
+  .reg-det-table tbody tr:nth-child(even):hover { background: var(--verde-soft); }
+  .reg-det-table td {
+    padding: 9px 14px;
+    color: var(--ink-soft);
+    vertical-align: middle;
+  }
+  .col-num  { width: 40px; }
+  .col-data { width: 88px; white-space: nowrap; }
+  .col-nome { min-width: 180px; }
+  .col-uf   { width: 44px; text-align: center; }
+  .col-meio { width: 140px; }
+  .col-obs  { min-width: 160px; color: var(--ink-mute); }
+  .reg-det-table th.col-obs { font-style: normal; }
+  .td-num   { color: var(--ink-mute); font-size: 10px; font-family: 'Jost', sans-serif; }
+  .td-data  { color: var(--ink-mute); font-size: 11px; white-space: nowrap; }
+  .td-nome  { font-weight: 500; color: var(--ink); }
+  .td-uf    { text-align: center; }
+  .uf-badge {
+    display: inline-block;
+    background: var(--verde-badge);
+    border: 1px solid rgba(0,104,81,0.18);
+    color: var(--verde);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 2px;
+    letter-spacing: 0.05em;
+  }
+  .canal-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 2px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .canal-tel {
+    background: rgba(0,104,81,0.08);
+    color: var(--verde);
+    border: 1px solid rgba(0,104,81,0.18);
+  }
+  .canal-email {
+    background: rgba(174,173,179,0.15);
+    color: var(--ink-soft);
+    border: 1px solid rgba(174,173,179,0.4);
+  }
+  .td-obs-text { color: var(--ink-mute); font-size: 11px; font-style: italic; }
+  .td-obs-empty { color: var(--line-strong); font-size: 11px; font-style: italic; }
+  .reg-det-empty {
+    text-align: center;
+    padding: 32px;
+    color: var(--ink-mute);
+    font-size: 12px;
+    font-style: italic;
+  }
 
-.alert-box {
-  background: var(--red-light);
-  border-left: 3px solid var(--red);
-  padding: 10px 14px;
-  margin-top: 12px;
-  font-size: 13px; line-height: 1.65;
-  color: var(--gray-900);
-}
-.alert-box strong { color: var(--red-dark); font-weight: 600; }
+  /* ===== CARGO BADGE ===== */
+  .col-cargo { min-width: 130px; }
+  .cargo-badge {
+    display: inline-block;
+    background: rgba(26,26,26,0.06);
+    border: 1px solid rgba(26,26,26,0.14);
+    color: var(--ink-soft);
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 2px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
 
-.law-box {
-  background: var(--navy-light);
-  border-left: 3px solid var(--navy);
-  padding: 12px 14px;
-  margin-top: 14px;
-}
-.law-box-title {
-  font-size: 10px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.08em;
-  color: var(--navy); margin-bottom: 8px;
-}
-.law-item {
-  display: flex; gap: 10px;
-  font-size: 13px; padding: 5px 0;
-  border-bottom: 1px solid rgba(26,58,107,0.1);
-  line-height: 1.5;
-}
-.law-item:last-child { border-bottom: none; }
-.law-art {
-  font-weight: 600; color: var(--navy);
-  font-size: 12px; flex-shrink: 0;
-  min-width: 80px; margin-top: 1px;
-}
-.law-desc { color: var(--gray-600); font-size: 12px; }
+  /* ===== OBS TAGS ===== */
+  .obs-tags-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+  }
+  .obs-tag {
+    display: inline-block;
+    font-size: 9.5px;
+    font-weight: 500;
+    font-style: normal;
+    padding: 2px 7px;
+    border-radius: 2px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    font-family: 'Jost', sans-serif;
+  }
 
-/* FOOTER */
-.site-footer {
-  background: var(--navy-dark);
-  border-top: 3px solid var(--red);
-  padding: 1.25rem 1.5rem;
-  text-align: center;
-  font-size: 12px; color: rgba(255,255,255,0.4);
-}
-.site-footer strong { color: rgba(255,255,255,0.7); }
+  /* ===== CONTENCIOSO ===== */
+  .col-proc { min-width: 180px; white-space: nowrap; }
+  .col-foro { min-width: 140px; }
+  .proc-num {
+    font-family: 'Jost', sans-serif;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    letter-spacing: 0.02em;
+  }
 
-@media (max-width: 600px) {
-  .field-grid { grid-template-columns: 1fr; }
-  .salary-grid { grid-template-columns: 1fr 1fr; }
-  .plantao-grid { grid-template-columns: 1fr; }
-}
+  /* ===== FOOTER ===== */
+  footer {
+    border-top: 1.5px solid var(--ink);
+    background: var(--bg-card);
+    padding: 24px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 20px;
+  }
+  .footer-brand { display: flex; flex-direction: column; gap: 3px; }
+  .footer-name { font-family: 'Jost', sans-serif; font-weight: 500; font-size: 15px; color: var(--ink); }
+  .footer-web { font-family: 'Jost', sans-serif; font-size: 11px; color: var(--verde); letter-spacing: 0.05em; }
+  .footer-contact { font-family: 'Jost', sans-serif; font-size: 11px; color: var(--ink-mute); text-align: center; line-height: 1.8; }
+  .footer-contact a { color: var(--verde); text-decoration: none; }
+  .footer-period { font-family: 'Jost', sans-serif; font-size: 10px; color: var(--ink-mute); text-align: right; line-height: 1.8; letter-spacing: 0.06em; }
+
+  @media (max-width: 960px) {
+    header { padding: 20px; }
+    main { padding: 20px; }
+    .filter-area { padding: 0 20px; }
+    .kpi-strip { grid-template-columns: 1fr 1fr; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .dash-title { font-size: 28px; }
+    footer { padding: 20px; flex-direction: column; align-items: flex-start; }
+  }
 </style>
 </head>
 <body>
 
-<header class="site-header">
-  <div class="header-inner">
-    <div class="header-text">
-      <h1>SINDUPE — Portal de Reajuste Salarial</h1>
-      <p>Sindicato dos Servidores da Universidade de Pernambuco</p>
-    </div>
-    <div class="header-badge">LC 545/2024</div>
+<!-- LOADING OVERLAY -->
+<div id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Carregando dados da planilha…</div>
+</div>
+
+<!-- BANNER DE ERRO -->
+<div id="error-banner">
+  ⚠ Não foi possível carregar os dados ao vivo. Verifique se a planilha está publicada como CSV público.
+  <a href="#" onclick="loadData()" style="color:#b00;font-weight:600;margin-left:8px">Tentar novamente</a>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="brand-block">
+    <div class="eyebrow">Monteiro e Monteiro Advogados · Direito Eleitoral</div>
+    <h1 class="dash-title">Atendimentos <em>Eleitorais</em></h1>
+    <div class="dash-subtitle">Registro consolidado de atendimentos por WhatsApp, telefone e e-mail — Eleições 2026</div>
+    <div class="live-badge"><div class="live-dot"></div> Dados ao vivo · Google Sheets</div>
+    <div class="last-update" id="last-update">Última atualização: —</div>
+  </div>
+  <div class="meta-block">
+    <div class="date-now" id="data-hoje"></div>
+    <div id="meta-ufs">— UFs · Maio 2026</div>
+    <div id="meta-periodo">—</div>
   </div>
 </header>
 
-<nav class="tabs-bar">
-  <div class="tabs-inner">
-    <button class="tab-btn active" onclick="switchTab('calc', this)">
-      Calculadora de vencimento base
-    </button>
-    <button class="tab-btn" onclick="switchTab('guide', this)">
-      Guia do reajuste
-    </button>
-  </div>
-</nav>
-
-<main class="main">
-
-  <!-- TAB: SIMULADOR -->
-  <div id="tab-calc" class="tab-panel active">
-    <div class="section-title">Consulta de vencimento base</div>
-
-    <!-- Cargo (único) -->
-    <div class="calc-card">
-      <label class="field-label" for="cargo">Cargo</label>
-      <select id="cargo" onchange="onCargoChange()">
-        <option value="">Selecione o cargo...</option>
-        <option value="analista">Analista em Gestão Universitária</option>
-        <option value="assistente">Assistente em Gestão Universitária</option>
-        <option value="auxiliar">Auxiliar em Gestão Universitária</option>
+<!-- FILTROS -->
+<div class="filter-area">
+  <div class="filter-bar">
+    <div class="filter-group">
+      <span class="filter-label">Mês</span>
+      <select class="filter-select" id="sel-mes" onchange="setMes(this.value)">
+        <option value="todos">Todos os meses</option>
       </select>
-      <p style="font-size:12px;color:var(--gray-400);margin-top:10px;line-height:1.5;">
-        Informe o enquadramento em cada período. Se não houve progressão entre um período e o seguinte, marque "mesmo enquadramento do período anterior" para manter os campos preenchidos automaticamente.
-      </p>
     </div>
-
-    <!-- Bloco jun/2024 -->
-    <div class="period-block" id="block-2024">
-      <div class="period-block-header">
-        <span class="period-block-title">Junho de 2024</span>
-      </div>
-      <div class="period-block-body" id="body-2024">
-        <div class="field-grid">
-          <div>
-            <label class="field-label" for="classe-2024">Série (classe)</label>
-            <select id="classe-2024" onchange="onClasseChange('2024')">
-              <option value="">Selecione o cargo</option>
-            </select>
-          </div>
-          <div>
-            <label class="field-label" for="faixa-2024">Faixa salarial</label>
-            <select id="faixa-2024" onchange="onFaixaChange('2024')">
-              <option value="">Selecione a série</option>
-            </select>
-          </div>
-          <div class="field-full">
-            <label class="field-label" for="formacao-2024">Formação / qualificação</label>
-            <select id="formacao-2024">
-              <option value="">Selecione o cargo</option>
-            </select>
-          </div>
-          <div>
-            <label class="field-label" for="matriz-2024">Matriz</label>
-            <select id="matriz-2024">
-              <option value="">Selecione a faixa</option>
-            </select>
-          </div>
-        </div>
-      </div>
+    <div class="filter-group">
+      <span class="filter-label">Dia</span>
+      <select class="filter-select" id="sel-dia" onchange="setDia(this.value)">
+        <option value="todos">Todos os dias</option>
+      </select>
     </div>
-
-    <!-- Bloco jun/2025 -->
-    <div class="period-block" id="block-2025">
-      <div class="period-block-header">
-        <span class="period-block-title">Junho de 2025</span>
-        <label class="same-as-prev">
-          <input type="checkbox" id="same-2025" onchange="toggleSame('2025')" checked>
-          Mesmo enquadramento de 2024
-        </label>
-      </div>
-      <div class="period-block-body locked" id="body-2025">
-        <div class="field-grid">
-          <div>
-            <label class="field-label" for="classe-2025">Série (classe)</label>
-            <select id="classe-2025" onchange="onClasseChange('2025')">
-              <option value="">Selecione o cargo</option>
-            </select>
-          </div>
-          <div>
-            <label class="field-label" for="faixa-2025">Faixa salarial</label>
-            <select id="faixa-2025" onchange="onFaixaChange('2025')">
-              <option value="">Selecione a série</option>
-            </select>
-          </div>
-          <div class="field-full">
-            <label class="field-label" for="formacao-2025">Formação / qualificação</label>
-            <select id="formacao-2025">
-              <option value="">Selecione o cargo</option>
-            </select>
-          </div>
-          <div>
-            <label class="field-label" for="matriz-2025">Matriz</label>
-            <select id="matriz-2025">
-              <option value="">Selecione a faixa</option>
-            </select>
-          </div>
-        </div>
-      </div>
+    <div class="filter-divider"></div>
+    <div class="filter-group">
+      <span class="filter-label">Estado</span>
+      <select class="filter-select" id="sel-uf" onchange="setUF(this.value)">
+        <option value="todos">Todos os estados</option>
+      </select>
     </div>
+    <div class="filter-divider"></div>
+    <button class="filter-reset" onclick="resetFiltros()">Limpar filtros</button>
+    <div class="filter-summary" id="filter-summary">Exibindo <strong id="total-filtrado">—</strong> registros</div>
+  </div>
+</div>
 
-    <!-- Bloco jun/2026 -->
-    <div class="period-block" id="block-2026">
-      <div class="period-block-header">
-        <span class="period-block-title">Junho de 2026</span>
-        <label class="same-as-prev">
-          <input type="checkbox" id="same-2026" onchange="toggleSame('2026')" checked>
-          Mesmo enquadramento de 2025
-        </label>
-      </div>
-      <div class="period-block-body locked" id="body-2026">
-        <div class="field-grid">
-          <div>
-            <label class="field-label" for="classe-2026">Série (classe)</label>
-            <select id="classe-2026" onchange="onClasseChange('2026')">
-              <option value="">Selecione o cargo</option>
-            </select>
-          </div>
-          <div>
-            <label class="field-label" for="faixa-2026">Faixa salarial</label>
-            <select id="faixa-2026" onchange="onFaixaChange('2026')">
-              <option value="">Selecione a série</option>
-            </select>
-          </div>
-          <div class="field-full">
-            <label class="field-label" for="formacao-2026">Formação / qualificação</label>
-            <select id="formacao-2026">
-              <option value="">Selecione o cargo</option>
-            </select>
-          </div>
-          <div>
-            <label class="field-label" for="matriz-2026">Matriz</label>
-            <select id="matriz-2026">
-              <option value="">Selecione a faixa</option>
-            </select>
-          </div>
-        </div>
-      </div>
+<main>
+
+  <!-- KPIs -->
+  <div class="section-label">Visão Geral</div>
+  <div class="kpi-strip">
+    <div class="kpi-cell">
+      <div class="kpi-cell-label">Total de Atendimentos</div>
+      <div class="kpi-cell-value" id="kpi-total">—</div>
+      <div class="kpi-cell-note">registros no período</div>
     </div>
-
-    <button class="btn-calc" onclick="calcular()">
-      Calcular projeção salarial
-    </button>
-    <div class="error-bar" id="error-bar">Preencha todos os campos de junho de 2024 antes de calcular.</div>
-
-    <div class="result-section" id="result-section">
-      <div class="section-title" style="margin-top:1.5rem;">Resultado da projeção</div>
-      <div class="result-header">
-        <p id="res-enquad-text"></p>
-      </div>
-      <div class="salary-grid" id="salary-grid"></div>
-      <div class="plantao-card">
-        <div class="plantao-title">
-          Gratificação de risco em regime de plantão (Anexo XVII)
-        </div>
-        <div class="plantao-grid" id="plantao-grid"></div>
-      </div>
-      <p class="note">Valores de vencimento base conforme Anexos XIV, XV e XVI da LC 545/2024 — jornada de 30h semanais. O valor de mai/2024 é estimativa retroativa calculada a partir do enquadramento de jun/2024 antes da incorporação da PARES. O percentual acumulado compara jun/2026 com a estimativa de mai/2024.</p>
+    <div class="kpi-cell">
+      <div class="kpi-cell-label">Estados Atendidos</div>
+      <div class="kpi-cell-value" id="kpi-estados">—</div>
+      <div class="kpi-cell-note">unidades federativas</div>
+    </div>
+    <div class="kpi-cell">
+      <div class="kpi-cell-label">Clientes Únicos</div>
+      <div class="kpi-cell-value" id="kpi-nomes">—</div>
+      <div class="kpi-cell-note">nomes identificados</div>
+    </div>
+    <div class="kpi-cell">
+      <div class="kpi-cell-label">Dias de Atendimento</div>
+      <div class="kpi-cell-value" id="kpi-dias">—</div>
+      <div class="kpi-cell-note">dias úteis cobertos</div>
     </div>
   </div>
 
-  <!-- TAB: GUIA -->
-  <div id="tab-guide" class="tab-panel">
-    <div class="section-title">Entenda o reajuste — fundamentos da LC 545/2024</div>
-
-    <div class="guide-block" id="g1">
-      <div class="guide-block-header" onclick="togGuide('g1')">
-        <div class="gb-num">1</div>
-        <div class="gb-title">A lógica do reajuste plurianual (2024–2026)</div>
-        <svg class="gb-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
-      </div>
-      <div class="guide-block-body" id="g1-body">
-        <p>O reajuste não é um índice único aplicado de uma só vez. A lei estruturou três parcelas sucessivas, aplicadas a cada junho do triênio 2024, 2025 e 2026, incidindo sobre o vencimento base de cada servidor conforme seu enquadramento funcional em maio de 2024 — o mês de referência fixado em lei para todos os cálculos.</p>
-        <p>O percentual total acumulado varia entre aproximadamente <strong>16,3% e 40%</strong>, a depender da classe, faixa e matriz. Essa variação existe porque os percentuais incidem progressivamente sobre vencimentos que já incorporaram a PARES (em 2024) e, em 2026, o Risco de Vida e o Perigo Laboral. Servidores em faixas mais baixas tendem a ter percentuais maiores para garantir o piso mínimo assegurado pela PCV.</p>
-        <div class="law-box">
-          <div class="law-box-title">&#9878; Fundamentos legais</div>
-          <div class="law-item"><span class="law-art">Art. 13, caput</span><span class="law-desc">Determina a reestruturação das grades de vencimento dos cargos de Analista, Assistente e Auxiliar em Gestão Universitária, com novos valores nos Anexos XIV a XVI, vigentes a partir das datas neles indicadas.</span></div>
-          <div class="law-item"><span class="law-art">Art. 14, caput</span><span class="law-desc">Institui a Parcela Complementar de Vencimento (PCV) para garantir, a partir de junho de 2026, o reajuste mínimo de 16,30% sobre a remuneração de maio de 2024.</span></div>
-          <div class="law-item"><span class="law-art">Anexos XIV–XVI</span><span class="law-desc">Tabelas com os valores nominais de vencimento base válidos a partir de junho de 2024, junho de 2025 e junho de 2026, respectivamente, para jornada de 30 horas semanais.</span></div>
+  <!-- EVOLUÇÃO TEMPORAL -->
+  <div class="section-label">Evolução Temporal</div>
+  <div class="grid-full">
+    <div class="chart-card">
+      <div class="chart-header-row">
+        <div>
+          <div class="chart-title">Atendimentos por Dia</div>
+          <div class="chart-subtitle">Volume diário de registros no período monitorado</div>
         </div>
+        <span class="chart-badge">Linha do Tempo</span>
+      </div>
+      <div class="chart-wrap short">
+        <canvas id="chartTemporal"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- LINHA 1: Gráfico UF + Meio de Contato -->
+  <div class="section-label">Análise por Estado e Canal</div>
+  <div class="grid-uf-meio">
+
+    <div class="chart-card chart-card-flex">
+      <div class="chart-header-row">
+        <div>
+          <div class="chart-title">Volume de Atendimentos por UF</div>
+          <div class="chart-subtitle">Comparativo entre estados</div>
+        </div>
+        <span class="chart-badge">Barras</span>
+      </div>
+      <div class="chart-wrap-flex">
+        <canvas id="chartUF"></canvas>
       </div>
     </div>
 
-    <div class="guide-block" id="g2">
-      <div class="guide-block-header" onclick="togGuide('g2')">
-        <div class="gb-num">2</div>
-        <div class="gb-title">Incorporação da PARES (junho de 2024)</div>
-        <svg class="gb-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
-      </div>
-      <div class="guide-block-body" id="g2-body">
-        <p>A PARES — Parcela Remuneratória de Valorização do Servidor — foi criada pela Lei Complementar nº 480/2022 como parcela temporária e destacada do vencimento, destinada a compensar defasagens salariais enquanto se negociava a reestruturação das carreiras.</p>
-        <p>A LC 545/2024 extinguiu a PARES para os servidores da UPE por <strong>incorporação integral ao vencimento base</strong>, a partir de 1º de junho de 2024. O servidor não perdeu esse valor — ele passou a integrar o vencimento base, deixando de figurar como parcela separada no contracheque.</p>
-        <p>Essa incorporação tem consequência direta e favorável: como o vencimento base passou a ser maior, também aumentou a base de cálculo do abono de férias, da gratificação natalina (décimo terceiro), da contribuição previdenciária e do IRPF.</p>
-        <div class="alert-box"><strong>Atenção:</strong> Se após junho de 2024 o contracheque ainda exibir a PARES como parcela destacada e separada do vencimento base, o enquadramento pode estar incorreto. O servidor deve solicitar verificação ao setor de recursos humanos da UPE.</div>
-        <div class="law-box">
-          <div class="law-box-title">&#9878; Fundamentos legais</div>
-          <div class="law-item"><span class="law-art">Art. 13, § 1º</span><span class="law-desc">Determina a extinção da PARES para os cargos da UPE, por incorporação integral dos seus valores nominais ao vencimento base, a partir de 1º de junho de 2024.</span></div>
-          <div class="law-item"><span class="law-art">Art. 14, § 1º</span><span class="law-desc">Define que a PCV tem natureza de vantagem pessoal inerente e integra a base de cálculo para férias, décimo terceiro, contribuição previdenciária e IRPF.</span></div>
-          <div class="law-item"><span class="law-art">LC nº 480/2022</span><span class="law-desc">Diploma que instituiu originalmente a PARES, ora extinta por incorporação para os servidores dos cargos da UPE.</span></div>
+    <div class="chart-card chart-card-donut">
+      <div class="chart-header-row">
+        <div>
+          <div class="chart-title">Meio de Contato</div>
+          <div class="chart-subtitle">Telefone/WhatsApp vs. E-mail</div>
         </div>
+        <span class="chart-badge">2 canais</span>
+      </div>
+      <div class="donut-row">
+        <canvas id="chartMeio" width="130" height="130" style="flex-shrink:0"></canvas>
+        <div class="donut-legend" id="legend-meio"></div>
       </div>
     </div>
 
-    <div class="guide-block" id="g3">
-      <div class="guide-block-header" onclick="togGuide('g3')">
-        <div class="gb-num">3</div>
-        <div class="gb-title">Incorporação do Risco de Vida e do Perigo Laboral (junho de 2026)</div>
-        <svg class="gb-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
-      </div>
-      <div class="guide-block-body" id="g3-body">
-        <p>Além da PARES, os servidores da UPE recebiam duas outras gratificações como parcelas destacadas: a <strong>Gratificação de Risco de Vida</strong>, instituída pela Lei Complementar nº 101/2007, e a <strong>Gratificação de Perigo Laboral</strong>, instituída pela Lei Complementar nº 479/2022.</p>
-        <p>A LC 545/2024 determinou que ambas serão extintas por incorporação ao vencimento base a partir de <strong>1º de junho de 2026</strong>. O mesmo raciocínio da PARES se aplica: os valores não são perdidos, mas passam a compor o salário base, elevando todas as bases de cálculo a ele vinculadas.</p>
-        <p>É precisamente por isso que os percentuais de reajuste em junho de 2026 são os mais elevados das três parcelas: eles precisam refletir não apenas a correção salarial em si, mas também a absorção dessas duas gratificações no vencimento base.</p>
-        <div class="alert-box"><strong>Efeito previdenciário relevante:</strong> Com a incorporação, a contribuição previdenciária incidirá sobre um vencimento base mais alto a partir de junho de 2026. Servidores próximos da aposentadoria devem verificar os impactos no cálculo dos proventos, especialmente quanto à média dos salários de contribuição.</div>
-        <div class="law-box">
-          <div class="law-box-title">&#9878; Fundamentos legais</div>
-          <div class="law-item"><span class="law-art">Art. 13, § 2º</span><span class="law-desc">Determina a extinção, a partir de 1º de junho de 2026, das Gratificações de Risco de Vida e de Perigo Laboral, por incorporação de seus valores ao vencimento base dos cargos da UPE.</span></div>
-          <div class="law-item"><span class="law-art">LC nº 101/2007</span><span class="law-desc">Diploma que instituiu originalmente a Gratificação de Risco de Vida para os servidores da UPE.</span></div>
-          <div class="law-item"><span class="law-art">LC nº 479/2022</span><span class="law-desc">Diploma que instituiu a Gratificação de Perigo Laboral, igualmente extinta por incorporação em junho de 2026.</span></div>
-          <div class="law-item"><span class="law-art">Art. 19</span><span class="law-desc">As disposições da LC 545/2024 são extensivas aos proventos de aposentadorias e pensões, observada a legislação previdenciária aplicável.</span></div>
+  </div>
+
+  <!-- LINHA 2: Distribuição Regional + Temas -->
+  <div class="section-label">Distribuição Regional e Temas</div>
+  <div class="grid-reg-temas">
+
+    <div class="chart-card">
+      <div class="chart-header-row">
+        <div>
+          <div class="chart-title">Distribuição Regional</div>
+          <div class="chart-subtitle">Agrupamento por macrorregião</div>
         </div>
+        <span class="chart-badge">5 regiões</span>
       </div>
+      <div class="reg-list" id="reg-list"></div>
     </div>
 
-    <div class="guide-block" id="g4">
-      <div class="guide-block-header" onclick="togGuide('g4')">
-        <div class="gb-num">4</div>
-        <div class="gb-title">A Parcela Complementar de Vencimento (PCV) e o reajuste mínimo garantido</div>
-        <svg class="gb-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
-      </div>
-      <div class="guide-block-body" id="g4-body">
-        <p>A PCV é a mais importante garantia jurídica trazida pela LC 545/2024. Ela assegura que nenhum servidor da UPE receba, em junho de 2026, menos do que <strong>16,3% acima do que recebia em maio de 2024</strong> — considerando a soma de vencimento base + PARES + Risco de Vida + Perigo Laboral daquele mês de referência.</p>
-        <p>O cálculo funciona assim: apura-se a diferença entre o novo vencimento base de junho de 2026 (já com as incorporações) e a remuneração total de maio de 2024. Se essa diferença já representar 16,3% ou mais, a PCV será zero. Se for menor, a PCV cobre o restante como vantagem pessoal nominalmente expressa no contracheque.</p>
-        <p>Uma vez fixada, a PCV acompanha todos os futuros reajustes do vencimento base, no mesmo percentual e na mesma oportunidade, até que seja eventualmente incorporada por negociação coletiva. Ela não se dilui com o tempo.</p>
-        <div class="alert-box"><strong>Direito exigível:</strong> O servidor que, após junho de 2026, constatar que seu reajuste real ficou abaixo de 16,3% sobre a remuneração de maio de 2024 tem direito líquido e certo à PCV — podendo exigi-la administrativamente junto à UPE ou, se negada, judicialmente, inclusive por mandado de segurança.</div>
-        <div class="law-box">
-          <div class="law-box-title">&#9878; Fundamentos legais</div>
-          <div class="law-item"><span class="law-art">Art. 14, caput</span><span class="law-desc">Institui a PCV e garante o reajuste mínimo de 16,30% a partir de junho de 2026, com base no enquadramento do servidor em maio de 2024.</span></div>
-          <div class="law-item"><span class="law-art">Art. 14, § 1º</span><span class="law-desc">Define a natureza jurídica da PCV como vantagem pessoal inerente, integrante da remuneração para todos os efeitos legais, incluindo férias, décimo terceiro, previdência e IRPF.</span></div>
-          <div class="law-item"><span class="law-art">Art. 14, § 2º</span><span class="law-desc">Estabelece a fórmula de cálculo da PCV: diferença entre o novo vencimento de junho de 2026 e a soma de vencimento base + PARES + Risco de Vida + Perigo Laboral de maio de 2024.</span></div>
-          <div class="law-item"><span class="law-art">Art. 14, § 3º</span><span class="law-desc">Protege o servidor que estava afastado em maio ou junho de referência: usa como base os valores que seriam devidos como se estivesse em efetivo exercício.</span></div>
-          <div class="law-item"><span class="law-art">Art. 14, § 4º</span><span class="law-desc">Determina que a PCV seja sempre reajustada no mesmo percentual e oportunidade dos reajustes do vencimento base, até sua eventual incorporação negocial.</span></div>
+    <div class="chart-card">
+      <div class="chart-header-row">
+        <div>
+          <div class="chart-title">Temas dos Atendimentos</div>
+          <div class="chart-subtitle">Classificação pelo campo de Observações</div>
         </div>
+        <span class="chart-badge" id="badge-cat">— temas</span>
       </div>
+      <div class="cat-list" id="cat-list"></div>
     </div>
 
-    <div class="guide-block" id="g5">
-      <div class="guide-block-header" onclick="togGuide('g5')">
-        <div class="gb-num">5</div>
-        <div class="gb-title">Proteção do Auxiliar em Gestão Universitária (cargo em extinção)</div>
-        <svg class="gb-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
-      </div>
-      <div class="guide-block-body" id="g5-body">
-        <p>A LC 545/2024 declarou o cargo de Auxiliar em Gestão Universitária <strong>em extinção</strong>. Isso não significa demissão nem redução de direitos para os atuais ocupantes — significa apenas que não haverão novos concursos para o cargo.</p>
-        <p>Para proteger esses servidores de eventual defasagem em relação ao salário mínimo nacional — reajustado periodicamente por decreto federal — a lei garante progressões ou promoções automáticas na carreira, em tantas faixas de vencimento base quantas forem necessárias para que o salário nunca fique abaixo do piso nacional.</p>
-        <p>Essa progressão automática independe de classe ou matriz, não exige cumprimento de interstício nem avaliação de desempenho — ocorre de pleno direito sempre que o salário mínimo nacional superar o vencimento do servidor.</p>
-        <div class="law-box">
-          <div class="law-box-title">&#9878; Fundamentos legais</div>
-          <div class="law-item"><span class="law-art">Art. 13, § 3º</span><span class="law-desc">Assegura progressões ou promoções automáticas ao Auxiliar em Gestão Universitária em tantas faixas quantas forem necessárias para alcançar valor igual ou imediatamente superior ao salário mínimo nacional, independentemente de classe ou matriz.</span></div>
+  </div>
+
+  <!-- REGISTRO DETALHADO -->
+  <div class="section-label">Registro Detalhado de Atendimentos</div>
+  <div class="grid-full">
+    <div class="chart-card">
+      <div class="chart-header-row">
+        <div>
+          <div class="chart-title">Relação de Atendimentos</div>
+          <div class="chart-subtitle">Listagem completa dos registros no período filtrado</div>
         </div>
+        <span class="chart-badge" id="badge-registros">— registros</span>
+      </div>
+      <div class="reg-table-wrap">
+        <div class="reg-table-scroll">
+        <table class="reg-det-table">
+          <thead>
+            <tr>
+              <th class="col-num">#</th>
+              <th class="col-data">Data</th>
+              <th class="col-nome">Candidato / Interessado</th>
+              <th class="col-uf">UF</th>
+              <th class="col-cargo">Cargo / Função</th>
+              <th class="col-meio">Canal</th>
+              <th class="col-obs">Temas</th>
+            </tr>
+          </thead>
+          <tbody id="reg-det-tbody"></tbody>
+        </table>
+        </div><!-- /.reg-table-scroll -->
+        <div class="reg-det-empty" id="reg-det-empty" style="display:none">Nenhum registro para exibir.</div>
       </div>
     </div>
-
-    <div style="margin-top:1rem;background:var(--gray-100);border-radius:var(--radius-md);padding:12px 16px;font-size:12px;color:var(--gray-600);line-height:1.6;border-left:3px solid var(--gray-200);">
-      Este guia tem caráter informativo e é elaborado com base na LC 545/2024. Para situações individuais que envolvam cálculo de direitos, afastamentos ou aposentadoria, consulte o SINDUPE ou assessoria jurídica especializada.
+  </div>
+  <!-- CONTENCIOSO -->
+  <div class="section-label">Contencioso</div>
+  <div class="grid-full">
+    <div class="chart-card">
+      <div class="chart-header-row">
+        <div>
+          <div class="chart-title">Processos em Andamento</div>
+          <div class="chart-subtitle">Relação do contencioso ativo por estado, parte e foro</div>
+        </div>
+        <span class="chart-badge" id="badge-contencioso">— processos</span>
+      </div>
+      <div class="reg-table-wrap">
+        <div class="reg-table-scroll">
+        <table class="reg-det-table">
+          <thead>
+            <tr>
+              <th class="col-num">#</th>
+              <th class="col-uf" style="text-align:left">Estado</th>
+              <th class="col-nome">Nome</th>
+              <th class="col-obs">Assunto</th>
+              <th class="col-proc">Nº do Processo</th>
+              <th class="col-foro">Foro</th>
+            </tr>
+          </thead>
+          <tbody id="cont-tbody"></tbody>
+        </table>
+        </div><!-- /.reg-table-scroll -->
+        <div class="reg-det-empty" id="cont-empty" style="display:none">Nenhum processo para exibir.</div>
+      </div>
     </div>
   </div>
 
 </main>
 
-<footer class="site-footer">
-  <strong>SINDUPE</strong> — Sindicato dos Servidores da Universidade de Pernambuco &nbsp;|&nbsp; Fundamentado na Lei Complementar nº 545, de 2 de setembro de 2024
+<footer>
+  <div class="footer-brand">
+    <div class="footer-name">Monteiro e Monteiro Advogados Associados</div>
+    <div class="footer-web">www.monteiro.adv.br</div>
+  </div>
+  <div class="footer-contact">
+    <a href="mailto:novo@monteiro.adv.br">novo@monteiro.adv.br</a><br>
+    81 99195.0063
+  </div>
+  <div class="footer-period" id="footer-period">
+    Período · —<br>
+    — registros · — estados
+  </div>
 </footer>
 
 <script>
-const DB = {
-  analista: {
-    label: "Analista em Gestão Universitária",
-    formacoes: ["Doutorado","Mestrado","Especialização","Graduação"],
-    dados: {
-      "2024": {
-        "I": { "Doutorado": [4285.41,4306.84,4328.37,4350.01,4371.76,4393.62,4415.59], "Mestrado": [4081.34,4101.75,4122.26,4142.87,4163.58,4184.40,4205.32], "Especialização": [3886.99,3906.43,3925.96,3945.59,3965.32,3985.15,4005.07], "Graduação": [3701.90,3720.41,3739.01,3757.71,3776.49,3795.38,3814.35] },
-        "II": { "Doutorado": [4503.90,4539.93,4576.25,4612.86,4649.77,4686.96,4724.46], "Mestrado": [4289.43,4323.75,4358.34,4393.20,4428.35,4463.78,4499.49], "Especialização": [4085.17,4117.85,4150.80,4184.00,4217.47,4251.21,4285.22], "Graduação": [3890.64,3921.77,3953.14,3984.76,4016.64,4048.78,4081.17] },
-        "III": { "Doutorado": [5196.91,5238.48,5280.39,5322.63,5365.21,5408.14,5451.40], "Mestrado": [4949.43,4989.03,5028.94,5069.17,5109.73,5150.60,5191.81], "Especialização": [4713.75,4751.46,4789.47,4827.78,4866.41,4905.34,4944.58], "Graduação": [4489.28,4525.20,4561.40,4597.89,4634.67,4671.75,4709.12] },
-        "IV": { "Doutorado": [6105.57,6197.15,6290.11,6384.46,6480.23,6577.43,6676.09], "Mestrado": [5814.83,5902.05,5990.58,6080.44,6171.65,6264.22,6358.18], "Especialização": [5537.93,5621.00,5705.31,5790.89,5877.76,5965.92,6055.41], "Graduação": [5274.22,5353.33,5433.63,5515.14,5597.86,5681.83,5767.06] }
-      },
-      "2025": {
-        "I": { "Doutorado": [4478.25,4500.65,4523.15,4545.76,4568.49,4591.34,4614.29], "Mestrado": [4265.00,4286.33,4307.76,4329.30,4350.95,4372.70,4394.56], "Especialização": [4061.91,4082.22,4102.63,4123.14,4143.76,4164.48,4185.30], "Graduação": [3868.48,3887.83,3907.27,3926.80,3946.44,3966.17,3986.00] },
-        "II": { "Doutorado": [4706.58,4744.23,4782.18,4820.44,4859.01,4897.88,4937.06], "Mestrado": [4482.46,4518.32,4554.46,4590.90,4627.62,4664.65,4701.96], "Especialização": [4269.01,4303.16,4337.58,4372.28,4407.26,4442.52,4478.06], "Graduação": [4065.72,4098.24,4131.03,4164.08,4197.39,4230.97,4264.82] },
-        "III": { "Doutorado": [5430.77,5474.21,5518.01,5562.15,5606.65,5651.50,5696.71], "Mestrado": [5172.16,5213.54,5255.24,5297.29,5339.66,5382.38,5425.44], "Especialização": [4925.87,4965.27,5004.99,5045.03,5085.39,5126.08,5167.09], "Graduação": [4691.30,4728.83,4766.66,4804.79,4843.23,4881.98,4921.03] },
-        "IV": { "Doutorado": [6380.32,6476.02,6573.16,6671.76,6771.84,6873.42,6976.52], "Mestrado": [6076.49,6167.64,6260.16,6354.06,6449.37,6546.11,6644.30], "Especialização": [5787.14,5873.94,5962.05,6051.48,6142.26,6234.39,6327.91], "Graduação": [5511.56,5594.23,5678.15,5763.32,5849.77,5937.51,6026.58] }
-      },
-      "2026": {
-        "I": { "Doutorado": [5280.46,5306.86,5333.39,5360.06,5386.86,5413.79,5440.86], "Mestrado": [4972.43,4997.29,5022.28,5047.39,5072.63,5097.99,5123.48], "Especialização": [4620.40,4643.50,4666.72,4690.05,4713.50,4737.07,4760.76], "Graduação": [4400.38,4422.38,4444.49,4466.72,4489.05,4511.50,4534.05] },
-        "II": { "Doutorado": [5495.27,5539.23,5583.55,5628.22,5673.24,5718.63,5764.38], "Mestrado": [5174.71,5216.11,5257.84,5299.90,5342.30,5385.04,5428.12], "Especialização": [4808.36,4846.83,4885.60,4924.69,4964.09,5003.80,5043.83], "Graduação": [4579.39,4616.03,4652.96,4690.18,4727.70,4765.52,4803.65] },
-        "III": { "Doutorado": [6225.53,6275.33,6325.53,6376.14,6427.15,6478.56,6530.39], "Mestrado": [5862.37,5909.27,5956.54,6004.20,6052.23,6100.65,6149.45], "Especialização": [5447.34,5490.91,5534.84,5579.12,5623.75,5668.74,5714.09], "Graduação": [5187.94,5229.44,5271.28,5313.45,5355.96,5398.80,5441.99] },
-        "IV": { "Doutorado": [7052.82,7158.62,7266.00,7374.99,7485.61,7597.89,7711.86], "Mestrado": [6641.41,6741.03,6842.15,6944.78,7048.95,7154.68,7262.00], "Especialização": [6171.22,6263.79,6357.75,6453.11,6549.91,6648.16,6747.88], "Graduação": [5877.35,5965.51,6055.00,6145.82,6238.01,6331.58,6426.55] }
-      }
-    },
-    plantao: { "jun/2024": "R$ 640,00", "jun/2025": "R$ 690,00", "jun/2026": "R$ 750,00" }
-  },
-  assistente: {
-    label: "Assistente em Gestão Universitária",
-    formacoes: ["Ens. Médio c/ Qualif. 360h","Ens. Médio c/ Qualif. 240h","Ens. Médio c/ Qualif. 180h","Ensino Médio Completo"],
-    dados: {
-      "2024": {
-        "I": { "Ens. Médio c/ Qualif. 360h": [2200.91,2211.91,2222.97,2234.09,2245.26,2256.48,2267.77], "Ens. Médio c/ Qualif. 240h": [2096.10,2106.58,2117.12,2127.70,2138.34,2149.03,2159.78], "Ens. Médio c/ Qualif. 180h": [1996.29,2006.27,2016.30,2026.38,2036.51,2046.70,2056.93], "Ensino Médio Completo": [1901.23,1910.73,1920.29,1929.89,1939.54,1949.23,1958.98] },
-        "II": { "Ens. Médio c/ Qualif. 360h": [2290.44,2308.77,2327.24,2345.85,2364.62,2383.54,2402.61], "Ens. Médio c/ Qualif. 240h": [2181.37,2198.83,2216.42,2234.15,2252.02,2270.04,2288.20], "Ens. Médio c/ Qualif. 180h": [2077.50,2094.12,2110.87,2127.76,2144.78,2161.94,2179.23], "Ensino Médio Completo": [1978.57,1994.40,2010.35,2026.44,2042.65,2058.99,2075.46] },
-        "III": { "Ens. Médio c/ Qualif. 360h": [2594.82,2615.57,2636.50,2657.59,2678.85,2700.28,2721.88], "Ens. Médio c/ Qualif. 240h": [2471.25,2491.02,2510.95,2531.04,2551.29,2571.70,2592.27], "Ens. Médio c/ Qualif. 180h": [2353.57,2372.40,2391.38,2410.51,2429.80,2449.24,2468.83], "Ensino Médio Completo": [2241.50,2259.43,2277.51,2295.73,2314.09,2332.60,2351.27] },
-        "IV": { "Ens. Médio c/ Qualif. 360h": [2994.07,3038.98,3084.57,3130.84,3177.80,3225.47,3273.85], "Ens. Médio c/ Qualif. 240h": [2851.50,2894.27,2937.68,2981.75,3026.48,3071.87,3117.95], "Ens. Médio c/ Qualif. 180h": [2715.71,2756.45,2797.79,2839.76,2882.36,2925.59,2969.48], "Ensino Médio Completo": [2586.39,2625.19,2664.57,2704.53,2745.10,2786.28,2828.07] }
-      },
-      "2025": {
-        "I": { "Ens. Médio c/ Qualif. 360h": [2299.95,2311.45,2323.00,2334.62,2346.29,2358.02,2369.81], "Ens. Médio c/ Qualif. 240h": [2190.43,2201.38,2212.39,2223.45,2234.56,2245.74,2256.97], "Ens. Médio c/ Qualif. 180h": [2086.12,2096.55,2107.03,2117.57,2128.16,2138.80,2149.49], "Ensino Médio Completo": [1986.78,1996.72,2006.70,2016.73,2026.82,2036.95,2047.14] },
-        "II": { "Ens. Médio c/ Qualif. 360h": [2393.51,2412.66,2431.96,2451.42,2471.03,2490.80,2510.72], "Ens. Médio c/ Qualif. 240h": [2279.54,2297.77,2316.15,2334.68,2353.36,2372.19,2391.17], "Ens. Médio c/ Qualif. 180h": [2170.99,2188.35,2205.86,2223.51,2241.30,2259.23,2277.30], "Ensino Médio Completo": [2067.61,2084.15,2100.82,2117.63,2134.57,2151.64,2168.86] },
-        "III": { "Ens. Médio c/ Qualif. 360h": [2711.58,2733.27,2755.14,2777.18,2799.40,2821.79,2844.37], "Ens. Médio c/ Qualif. 240h": [2582.46,2603.12,2623.94,2644.94,2666.09,2687.42,2708.92], "Ens. Médio c/ Qualif. 180h": [2459.48,2479.16,2498.99,2518.99,2539.14,2559.45,2579.93], "Ensino Médio Completo": [2342.37,2361.11,2379.99,2399.03,2418.23,2437.57,2457.07] },
-        "IV": { "Ens. Médio c/ Qualif. 360h": [3128.81,3175.74,3223.37,3271.72,3320.80,3370.61,3421.17], "Ens. Médio c/ Qualif. 240h": [2979.81,3024.51,3069.88,3115.93,3162.67,3210.11,3258.26], "Ens. Médio c/ Qualif. 180h": [2837.92,2880.49,2923.70,2967.55,3012.06,3057.24,3103.10], "Ensino Médio Completo": [2702.78,2743.32,2784.47,2826.24,2868.63,2911.66,2955.34] }
-      },
-      "2026": {
-        "I": { "Ens. Médio c/ Qualif. 360h": [2858.83,2873.13,2887.49,2901.93,2916.44,2931.02,2945.68], "Ens. Médio c/ Qualif. 240h": [2692.07,2705.53,2719.05,2732.65,2746.31,2760.04,2773.85], "Ens. Médio c/ Qualif. 180h": [2501.48,2513.99,2526.56,2539.19,2551.88,2564.64,2577.47], "Ensino Médio Completo": [2382.36,2394.27,2406.24,2418.27,2430.37,2442.52,2454.73] },
-        "II": { "Ens. Médio c/ Qualif. 360h": [2975.13,2990.01,3004.96,3019.98,3035.08,3050.26,3065.51], "Ens. Médio c/ Qualif. 240h": [2801.58,2815.59,2829.67,2843.82,2858.04,2872.33,2886.69], "Ens. Médio c/ Qualif. 180h": [2603.24,2616.26,2629.34,2642.49,2655.70,2668.98,2682.32], "Ensino Médio Completo": [2479.28,2491.67,2504.13,2516.65,2529.24,2541.88,2554.59] },
-        "III": { "Ens. Médio c/ Qualif. 360h": [3157.48,3173.26,3189.13,3205.07,3221.10,3237.21,3253.39], "Ens. Médio c/ Qualif. 240h": [2973.29,2988.16,3003.10,3018.11,3033.20,3048.37,3063.61], "Ens. Médio c/ Qualif. 180h": [2762.79,2776.60,2790.49,2804.44,2818.46,2832.55,2846.72], "Ensino Médio Completo": [2631.23,2644.39,2657.61,2670.90,2684.25,2697.67,2711.16] },
-        "IV": { "Ens. Médio c/ Qualif. 360h": [3448.60,3500.32,3552.83,3606.12,3660.21,3715.12,3770.84], "Ens. Médio c/ Qualif. 240h": [3247.43,3296.14,3345.58,3395.76,3446.70,3498.40,3550.88], "Ens. Médio c/ Qualif. 180h": [3017.52,3062.78,3108.73,3155.36,3202.69,3250.73,3299.49], "Ensino Médio Completo": [2873.83,2916.94,2960.69,3005.10,3050.18,3095.93,3142.37] }
-      }
-    },
-    plantao: { "jun/2024": "R$ 210,00", "jun/2025": "R$ 230,00", "jun/2026": "R$ 250,00" }
-  },
-  auxiliar: {
-    label: "Auxiliar em Gestão Universitária",
-    formacoes: ["Ens. Fund. c/ Qualif. 240h","Ens. Fund. c/ Qualif. 180h","Ensino Fundamental Completo","Formação até 4ª série"],
-    dados: {
-      "2024": {
-        "I": { "Ens. Fund. c/ Qualif. 240h": [1798.75,1807.75,1816.79,1825.87,1835.00,1844.18,1853.40], "Ens. Fund. c/ Qualif. 180h": [1713.10,1721.67,1730.27,1738.92,1747.62,1756.36,1765.14], "Ensino Fundamental Completo": [1631.52,1639.68,1647.88,1656.12,1664.40,1672.72,1681.08], "Formação até 4ª série": [1553.83,1561.60,1569.41,1577.26,1585.14,1593.07,1601.03] },
-        "II": { "Ens. Fund. c/ Qualif. 240h": [1890.46,1905.59,1920.83,1936.20,1951.69,1967.30,1983.04], "Ens. Fund. c/ Qualif. 180h": [1800.44,1814.85,1829.36,1844.00,1858.75,1873.62,1888.61], "Ensino Fundamental Completo": [1714.71,1728.42,1742.25,1756.19,1770.24,1784.40,1798.68], "Formação até 4ª série": [1633.05,1646.12,1659.29,1672.56,1685.94,1699.43,1713.03] },
-        "III": { "Ens. Fund. c/ Qualif. 240h": [2181.34,2198.80,2216.39,2234.12,2251.99,2270.01,2288.17], "Ens. Fund. c/ Qualif. 180h": [2077.47,2094.09,2110.84,2127.73,2144.75,2161.91,2179.21], "Ensino Fundamental Completo": [1978.54,1994.37,2010.33,2026.41,2042.62,2058.96,2075.43], "Formação até 4ª série": [1884.33,1899.40,1914.60,1929.91,1945.35,1960.92,1976.60] },
-        "IV": { "Ens. Fund. c/ Qualif. 240h": [2562.75,2601.19,2640.20,2679.81,2720.00,2760.81,2802.22], "Ens. Fund. c/ Qualif. 180h": [2440.71,2477.32,2514.48,2552.20,2590.48,2629.34,2668.78], "Ensino Fundamental Completo": [2324.49,2359.35,2394.74,2430.66,2467.12,2504.13,2541.69], "Formação até 4ª série": [2213.80,2247.00,2280.71,2314.92,2349.64,2384.89,2420.66] }
-      },
-      "2025": {
-        "I": { "Ens. Fund. c/ Qualif. 240h": [1879.70,1889.10,1898.54,1908.04,1917.58,1927.16,1936.80], "Ens. Fund. c/ Qualif. 180h": [1790.19,1799.14,1808.14,1817.18,1826.26,1835.39,1844.57], "Ensino Fundamental Completo": [1704.94,1713.47,1722.03,1730.64,1739.30,1747.99,1756.73], "Formação até 4ª série": [1623.75,1631.87,1640.03,1648.23,1656.47,1664.76,1673.08] },
-        "II": { "Ens. Fund. c/ Qualif. 240h": [1975.53,1991.34,2007.27,2023.33,2039.51,2055.83,2072.28], "Ens. Fund. c/ Qualif. 180h": [1881.46,1896.51,1911.69,1926.98,1942.40,1957.93,1973.60], "Ensino Fundamental Completo": [1791.87,1806.20,1820.65,1835.22,1849.90,1864.70,1879.62], "Formação até 4ª série": [1706.54,1720.19,1733.96,1747.83,1761.81,1775.90,1790.11] },
-        "III": { "Ens. Fund. c/ Qualif. 240h": [2279.51,2297.74,2316.12,2334.65,2353.33,2372.16,2391.13], "Ens. Fund. c/ Qualif. 180h": [2170.96,2188.33,2205.83,2223.48,2241.27,2259.20,2277.27], "Ensino Fundamental Completo": [2067.58,2084.12,2100.79,2117.60,2134.54,2151.62,2168.83], "Formação até 4ª série": [1969.12,1984.88,2000.75,2016.76,2032.89,2049.16,2065.55] },
-        "IV": { "Ens. Fund. c/ Qualif. 240h": [2678.07,2718.24,2759.01,2800.40,2842.41,2885.04,2928.32], "Ens. Fund. c/ Qualif. 180h": [2550.54,2588.80,2627.63,2667.05,2707.05,2747.66,2788.87], "Ensino Fundamental Completo": [2429.09,2465.52,2502.51,2540.04,2578.15,2616.82,2656.07], "Formação até 4ª série": [2313.42,2348.12,2383.34,2419.09,2455.38,2492.21,2529.59] }
-      },
-      "2026": {
-        "I": { "Ens. Fund. c/ Qualif. 240h": [2182.76,2193.68,2204.65,2215.67,2226.75,2237.88,2249.07], "Ens. Fund. c/ Qualif. 180h": [2055.44,2065.71,2076.04,2086.42,2096.85,2107.34,2117.88], "Ensino Fundamental Completo": [1909.92,1919.47,1929.07,1938.71,1948.40,1958.15,1967.94], "Formação até 4ª série": [1818.97,1828.06,1837.21,1846.39,1855.62,1864.90,1874.23] },
-        "II": { "Ens. Fund. c/ Qualif. 240h": [2271.56,2289.73,2308.05,2326.52,2345.13,2363.89,2382.80], "Ens. Fund. c/ Qualif. 180h": [2139.05,2156.17,2173.42,2190.80,2208.33,2226.00,2243.80], "Ensino Fundamental Completo": [1987.62,2003.52,2019.55,2035.70,2051.99,2068.40,2084.95], "Formação até 4ª série": [1892.97,1908.11,1923.38,1938.76,1954.27,1969.91,1985.67] },
-        "III": { "Ens. Fund. c/ Qualif. 240h": [2597.25,2618.03,2638.98,2660.09,2681.37,2702.82,2724.44], "Ens. Fund. c/ Qualif. 180h": [2445.75,2465.31,2485.03,2504.92,2524.95,2545.15,2565.52], "Ensino Fundamental Completo": [2272.60,2290.78,2309.10,2327.58,2346.20,2364.97,2383.89], "Formação até 4ª série": [2164.38,2181.69,2199.15,2216.74,2234.47,2252.35,2270.37] },
-        "IV": { "Ens. Fund. c/ Qualif. 240h": [2969.64,3014.19,3059.40,3105.29,3151.87,3199.15,3247.13], "Ens. Fund. c/ Qualif. 180h": [2796.41,2838.36,2880.93,2924.15,2968.01,3012.53,3057.72], "Ensino Fundamental Completo": [2598.44,2637.41,2676.97,2717.13,2757.88,2799.25,2841.24], "Formação até 4ª série": [2474.70,2511.82,2549.50,2587.74,2626.56,2665.96,2705.94] }
-      }
-    },
-    plantao: { "jun/2024": "R$ 120,00", "jun/2025": "R$ 135,00", "jun/2026": "R$ 150,00" }
-  }
-};
+// ============================================================
+// CONFIGURAÇÃO — ÚNICA LINHA QUE VOCÊ PRECISA ALTERAR
+// ============================================================
+// Cole aqui a URL de exportação CSV da sua planilha.
+// Como obter: Arquivo → Compartilhar → Publicar na Web
+//             → selecione a aba correta → formato CSV → Publicar
+//             → copie o link gerado
+//
+// Formato esperado: https://docs.google.com/spreadsheets/d/SEU_ID/pub?gid=NUMERO_DA_ABA&single=true&output=csv
+//
+// URLs definidas abaixo em SHEET_URLS
 
-const FAIXAS = ["a","b","c","d","e","f","g"];
-const ANOS = ["2024","2025","2026"];
+const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
-function switchTab(id, btn) {
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('tab-'+id).classList.add('active');
-  btn.classList.add('active');
-}
 
-function populateSelects(ano, cargo, serie, faixa, formacao) {
-  const cl = document.getElementById('classe-'+ano);
-  const fx = document.getElementById('faixa-'+ano);
-  const fm = document.getElementById('formacao-'+ano);
-  const mz = document.getElementById('matriz-'+ano);
+// ============================================================
+// ESTADO GLOBAL
+// ============================================================
+let ROWS = [];
+let ROWS_CONTENCIOSO = [];
+let ALL_DATES = [];
+let DATE_LABELS = [];
+let ALL_UFS = [];
+let filtroMes  = 'todos';
+let filtroDia  = 'todos';
+let filtroUF   = 'todos';
+let chartTemporal, chartMeio, chartUF;
 
-  cl.innerHTML = '<option value="">Selecione a série...</option>';
-  ['I','II','III','IV'].forEach(s => {
-    const o = document.createElement('option');
-    o.value = s; o.textContent = 'Série ' + s;
-    if (s === serie) o.selected = true;
-    cl.appendChild(o);
-  });
+const VERDE        = '#006851';
+const VERDE_ACENTO = '#00A170';
+const PRATA        = '#AEADB3';
+const INK          = '#1a1a1a';
+const INK_MUTE     = '#8a8680';
+const LINE         = '#e5e0d5';
 
-  fx.innerHTML = '<option value="">Selecione a faixa...</option>';
-  if (serie) {
-    FAIXAS.forEach(f => {
-      const o = document.createElement('option');
-      o.value = f; o.textContent = 'Faixa ' + f.toUpperCase();
-      if (f === faixa) o.selected = true;
-      fx.appendChild(o);
-    });
-  }
+// ============================================================
+// PARSE CSV
+// ============================================================
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
 
-  fm.innerHTML = '<option value="">Selecione...</option>';
-  if (cargo) {
-    DB[cargo].formacoes.forEach(f => {
-      const o = document.createElement('option');
-      o.value = f; o.textContent = f;
-      if (f === formacao) o.selected = true;
-      fm.appendChild(o);
-    });
-  }
+  // Detecta o separador (vírgula ou ponto e vírgula)
+  const header = lines[0];
+  const sep = header.includes(';') ? ';' : ',';
 
-  mz.innerHTML = '<option value="">Selecione a matriz...</option>';
-  if (faixa) {
-    ['I','II','III','IV'].forEach(m => {
-      const o = document.createElement('option');
-      o.value = m; o.textContent = 'Matriz ' + m;
-      mz.appendChild(o);
-    });
-  }
-}
+  const cols = header.split(sep).map(c => c.trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]/g, ''));
 
-function getEnquad(ano) {
-  return {
-    serie:    document.getElementById('classe-'+ano).value,
-    faixa:    document.getElementById('faixa-'+ano).value,
-    formacao: document.getElementById('formacao-'+ano).value,
-    matriz:   document.getElementById('matriz-'+ano).value
+  // Mapeia nomes de colunas para os campos esperados
+  const idx = {
+    uf:    findCol(cols, ['uf','estado','state']),
+    meio:  findCol(cols, ['meio','canal','via','channel']),
+    nome:  findCol(cols, ['nome','name','cliente','client','contato']),
+    data:  findCol(cols, ['data','date','dia']),
+    obs:   findCol(cols, ['obs','observacao','observacoes','observação','tema','assunto','subject']),
+    cargo: findCol(cols, ['cargo','funcao','função','função','role','funcao'])
   };
+
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cells = splitCSVLine(lines[i], sep);
+    if (!cells || cells.every(c => !c.trim())) continue;
+
+    const uf   = (cells[idx.uf]   || '').trim().toUpperCase();
+    const meio = (cells[idx.meio] || '').trim().toLowerCase();
+    const nome = (cells[idx.nome] || '').trim();
+    const raw  = (cells[idx.data] || '').trim();
+    const obs   = (cells[idx.obs]   || '').trim();
+    const cargo = (cells[idx.cargo] !== undefined ? cells[idx.cargo] : '').trim();
+
+    if (!uf && !nome) continue;
+
+    // Normaliza o meio para 'email' ou 'tel'
+    // Cobre: 'email', 'e-mail', 'e–mail' (travessão), '@', ou qualquer texto descritivo contendo essas variações
+    const meioNorm = (() => {
+      const m = meio.normalize('NFD').replace(/[\u0300-\u036f]/g,''); // remove acentos
+      if (m.includes('@')) return 'email';
+      if (m.replace(/[\s\-–—]/g,'').includes('email')) return 'email'; // cobre e-mail, e–mail, e mail, email
+      return 'tel';
+    })();
+
+    // Normaliza a data para YYYY-MM-DD
+    const data = parseDate(raw);
+    if (!data) continue;
+
+    rows.push({ uf, meio: meioNorm, nome, data, obs, cargo });
+  }
+  return rows;
 }
 
-function onCargoChange() {
-  const cargo = document.getElementById('cargo').value;
-  ANOS.forEach(a => populateSelects(a, cargo, '', '', ''));
-  document.getElementById('same-2025').checked = true;
-  document.getElementById('same-2026').checked = true;
-  document.getElementById('body-2025').classList.add('locked');
-  document.getElementById('body-2026').classList.add('locked');
-  document.getElementById('result-section').classList.remove('show');
+// ============================================================
+// PARSE CSV — CONTENCIOSO
+// ============================================================
+function parseCSVContencioso(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+
+  const header = lines[0];
+  const sep = header.includes(';') ? ';' : ',';
+
+  const cols = header.split(sep).map(c => c.trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]/g, ''));
+
+  const idx = {
+    estado:   findCol(cols, ['estado','uf','state']),
+    nome:     findCol(cols, ['nome','name','cliente','contato','interessado','parte']),
+    assunto:  findCol(cols, ['assunto','tema','objeto','materia']),
+    processo: findCol(cols, ['processo','numero','proc','num']),
+    foro:     findCol(cols, ['foro','tribunal','vara','juizo','forum','orgao'])
+  };
+
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cells = splitCSVLine(lines[i], sep);
+    if (!cells || cells.every(c => !c.trim())) continue;
+
+    const estado   = (cells[idx.estado]   || '').trim();
+    const nome     = (cells[idx.nome]     || '').trim();
+    const assunto  = (cells[idx.assunto]  || '').trim();
+    const processo = (cells[idx.processo] || '').trim();
+    const foro     = (cells[idx.foro]     || '').trim();
+
+    if (!nome && !processo) continue;
+    rows.push({ estado, nome, assunto, processo, foro });
+  }
+  return rows;
 }
 
-function onClasseChange(ano) {
-  const serie = document.getElementById('classe-'+ano).value;
-  const fx = document.getElementById('faixa-'+ano);
-  const mz = document.getElementById('matriz-'+ano);
-  fx.innerHTML = '<option value="">Selecione a faixa...</option>';
-  mz.innerHTML = '<option value="">Selecione a matriz...</option>';
-  if (!serie) return;
-  FAIXAS.forEach(f => {
-    const o = document.createElement('option');
-    o.value = f; o.textContent = 'Faixa ' + f.toUpperCase();
-    fx.appendChild(o);
-  });
+function findCol(cols, candidates) {
+  for (const c of candidates) {
+    const i = cols.findIndex(col => col.includes(c));
+    if (i >= 0) return i;
+  }
+  return -1;
 }
 
-function onFaixaChange(ano) {
-  const mz = document.getElementById('matriz-'+ano);
-  mz.innerHTML = '<option value="">Selecione a matriz...</option>';
-  ['I','II','III','IV'].forEach(m => {
-    const o = document.createElement('option');
-    o.value = m; o.textContent = 'Matriz ' + m;
-    mz.appendChild(o);
-  });
+function splitCSVLine(line, sep) {
+  const result = [];
+  let cur = '';
+  let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQ = !inQ; }
+    else if (ch === sep && !inQ) { result.push(cur); cur = ''; }
+    else { cur += ch; }
+  }
+  result.push(cur);
+  return result;
 }
 
-function toggleSame(ano) {
-  const checked = document.getElementById('same-'+ano).checked;
-  const body = document.getElementById('body-'+ano);
-  const prevAno = ano === '2025' ? '2024' : '2025';
-  const cargo = document.getElementById('cargo').value;
+function parseDate(raw) {
+  if (!raw) return null;
+  // Tenta YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  // Tenta DD/MM/YYYY
+  const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  // Tenta DD/MM/YY
+  const m2 = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+  if (m2) return `20${m2[3]}-${m2[2].padStart(2,'0')}-${m2[1].padStart(2,'0')}`;
+  return null;
+}
 
-  if (checked) {
-    body.classList.add('locked');
-    const prev = getEnquad(prevAno);
-    populateSelects(ano, cargo, prev.serie, prev.faixa, prev.formacao);
-    const mz = document.getElementById('matriz-'+ano);
-    Array.from(mz.options).forEach(o => { if (o.value === document.getElementById('matriz-'+prevAno).value) o.selected = true; });
-  } else {
-    body.classList.remove('locked');
+// ============================================================
+// CARGA DE DADOS (fetch ao Google Sheets)
+// ============================================================
+// URL de publicação CSV gerada pelo Google Sheets
+const SHEET_URLS = [
+  'https://docs.google.com/spreadsheets/d/e/2PACX-1vTyZv4H_vCerCXXomVkoGHyo05Dl7kOmYG1AuQ8qc1TIoFOlCLXX_VqKRAc8APxZpXeUiKuhN5EoTRk/pub?gid=679125338&single=true&output=csv',
+];
+
+const SHEET_CONTENCIOSO_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTyZv4H_vCerCXXomVkoGHyo05Dl7kOmYG1AuQ8qc1TIoFOlCLXX_VqKRAc8APxZpXeUiKuhN5EoTRk/pub?gid=1862068739&single=true&output=csv';
+
+async function tryFetch(url) {
+  const res = await fetch(url + '&cachebust=' + Date.now(), { cache: 'no-store' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const text = await res.text();
+  // Verifica se retornou HTML de erro (login redirect) em vez de CSV
+  if (text.trim().startsWith('<')) throw new Error('Retornou HTML — planilha não pública');
+  return text;
+}
+
+async function loadData() {
+  let text = null;
+  let usedUrl = null;
+
+  for (const url of SHEET_URLS) {
+    try {
+      text = await tryFetch(url);
+      usedUrl = url;
+      break;
+    } catch(e) {
+      console.warn('URL falhou:', url, e.message);
+    }
+  }
+
+  // Busca contencioso em paralelo (silencioso se falhar)
+  let textContencioso = null;
+  try {
+    textContencioso = await tryFetch(SHEET_CONTENCIOSO_URL);
+  } catch(e) {
+    console.warn('Contencioso URL falhou:', e.message);
+  }
+
+  if (!text) {
+    console.warn('Todas as URLs falharam — exibindo dashboard vazio');
+    renderVazio();
+    return;
+  }
+
+  try {
+    const newRows = parseCSV(text);
+    if (!newRows.length) throw new Error('CSV vazio ou formato não reconhecido');
+
+    ROWS = newRows;
+    ALL_DATES = [...new Set(ROWS.map(r=>r.data))].sort();
+    DATE_LABELS = ALL_DATES.map(d => { const [,m,dy]=d.split('-'); return dy+'/'+m; });
+    ALL_UFS = [...new Set(ROWS.map(r=>r.uf))].sort();
+
+    // Processa contencioso
+    if (textContencioso) {
+      try {
+        ROWS_CONTENCIOSO = parseCSVContencioso(textContencioso);
+      } catch(e) {
+        console.warn('Erro ao processar CSV do contencioso:', e);
+        ROWS_CONTENCIOSO = [];
+      }
+    }
+
+    const ufsCount = ALL_UFS.length;
+    const minDate = ALL_DATES[0] || '';
+    const maxDate = ALL_DATES[ALL_DATES.length-1] || '';
+    document.getElementById('meta-ufs').textContent = ufsCount + ' UFs · Maio 2026';
+    document.getElementById('meta-periodo').textContent = fmtDateBR(minDate) + ' – ' + fmtDateBR(maxDate);
+    document.getElementById('footer-period').innerHTML =
+      'Período · ' + fmtDateBR(minDate) + ' – ' + fmtDateBR(maxDate) +
+      '<br>' + ROWS.length + ' registros · ' + ufsCount + ' estados';
+
+    document.getElementById('last-update').textContent =
+      'Última atualização: ' + new Date().toLocaleTimeString('pt-BR');
+    document.getElementById('last-update').style.color = '';
+    document.querySelector('.live-dot').style.background = '';
+    document.getElementById('error-banner').style.display = 'none';
+    document.getElementById('loading-overlay').classList.add('hidden');
+
+    console.log('Dados carregados de:', usedUrl, '— Registros:', ROWS.length);
+    console.log('Contencioso:', ROWS_CONTENCIOSO.length, 'registros');
+    update();
+  } catch(e) {
+    console.warn('Erro ao processar CSV:', e);
+    renderVazio();
   }
 }
 
-function fmt(v) { return 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function renderVazio() {
+  ROWS = [];
+  ALL_DATES = [];
+  DATE_LABELS = [];
+  ALL_UFS = [];
 
-function calcular() {
-  const cargo = document.getElementById('cargo').value;
-  const err = document.getElementById('error-bar');
-  const res = document.getElementById('result-section');
+  document.getElementById('meta-ufs').textContent = '— UFs · Maio 2026';
+  document.getElementById('meta-periodo').textContent = '—';
+  document.getElementById('footer-period').innerHTML = 'Período · —<br>— registros · — estados';
 
-  const e24 = getEnquad('2024');
-  const e25 = document.getElementById('same-2025').checked ? e24 : getEnquad('2025');
-  const e26 = document.getElementById('same-2026').checked ? e25 : getEnquad('2026');
+  document.getElementById('last-update').textContent = 'Aguardando dados da planilha…';
+  document.getElementById('last-update').style.color = '#b06000';
+  document.querySelector('.live-dot').style.background = '#b06000';
+  document.getElementById('error-banner').style.display = 'none';
+  document.getElementById('loading-overlay').classList.add('hidden');
+  update();
+}
 
-  if (!cargo || !e24.serie || !e24.faixa || !e24.formacao || !e24.matriz) {
-    err.classList.add('show'); res.classList.remove('show'); return;
-  }
-  err.classList.remove('show');
+function fmtDateBR(iso) {
+  if (!iso) return '—';
+  const [y,m,d] = iso.split('-');
+  return d + '/' + m + '/' + y;
+}
 
-  const d = DB[cargo].dados;
-  const fi24 = FAIXAS.indexOf(e24.faixa);
-  const fi25 = FAIXAS.indexOf(e25.faixa);
-  const fi26 = FAIXAS.indexOf(e26.faixa);
+// ============================================================
+// HELPERS
+// ============================================================
+function getFiltered() {
+  return ROWS.filter(r => {
+    if (filtroMes !== 'todos' && !r.data.startsWith(filtroMes)) return false;
+    if (filtroDia !== 'todos' && r.data !== filtroDia) return false;
+    if (filtroUF  !== 'todos' && r.uf   !== filtroUF)  return false;
+    return true;
+  });
+}
 
-  const v24 = d['2024'][e24.serie][e24.formacao][fi24];
-  const v25 = d['2025'][(e25.serie||e24.serie)][(e25.formacao||e24.formacao)][fi25 >= 0 ? fi25 : fi24];
-  const v26 = d['2026'][(e26.serie||e25.serie||e24.serie)][(e26.formacao||e25.formacao||e24.formacao)][fi26 >= 0 ? fi26 : fi25 >= 0 ? fi25 : fi24];
-  const vRef = v24 * 0.964;
-  const totalPct = ((v26 - vRef) / vRef * 100).toFixed(1);
+function countBy(arr, fn) {
+  const m = {};
+  arr.forEach(r => { const k=fn(r); m[k]=(m[k]||0)+1; });
+  return m;
+}
 
-  const same25 = document.getElementById('same-2025').checked;
-  const same26 = document.getElementById('same-2026').checked;
+function classObs(obs) {
+  if (!obs || !obs.trim()) return 'Consulta Geral';
 
-  const enquadTexto = [
-    '<strong>jun/2024:</strong> ' + DB[cargo].label + ' — Série ' + e24.serie + ', Faixa ' + e24.faixa.toUpperCase() + ', ' + e24.formacao + ', Matriz ' + e24.matriz,
-    same25 ? null : '<strong>jun/2025:</strong> Série ' + e25.serie + ', Faixa ' + e25.faixa.toUpperCase() + ', ' + e25.formacao + ', Matriz ' + (document.getElementById('matriz-2025').value || e24.matriz),
-    same26 ? null : '<strong>jun/2026:</strong> Série ' + e26.serie + ', Faixa ' + e26.faixa.toUpperCase() + ', ' + e26.formacao + ', Matriz ' + (document.getElementById('matriz-2026').value || e25.matriz || e24.matriz)
-  ].filter(Boolean).join('<br>');
+  // Normaliza: minúsculas + remove acentos — resolve discrepâncias de encoding do Google Sheets
+  const o = obs.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .trim();
 
-  document.getElementById('res-enquad-text').innerHTML = enquadTexto;
-
-  const cards = [
-    { period: 'mai/2024', value: fmt(vRef), delta: 'Referência base (est.)' },
-    { period: 'jun/2024', value: fmt(v24), delta: 'PARES incorporada' },
-    { period: 'jun/2025', value: fmt(v25), delta: '+' + ((v25-vRef)/vRef*100).toFixed(1) + '% vs. mai/24' },
-    { period: 'jun/2026', value: fmt(v26), delta: '+' + totalPct + '% total acumulado', hl: true }
+  // Cada entrada: [array de palavras-chave normalizadas, rótulo]
+  // A ordem importa: mais específico primeiro
+  const regras = [
+    [['dupla filia'],                                    'Dupla Filiação'],
+    [['certidao de filia'],                              'Certidão de Filiação'],
+    [['vaquinha','financiamento coletivo'],               'Vaquinha'],
+    [['desincompatibiliz'],                              'Desincompatibilização'],
+    [['impulsionamento'],                                'Impulsionamento'],
+    [['video','videos'],                                 'Vídeos'],
+    [['cnpj'],                                           'CNPJ'],
+    [['reuniao','reuniao'],                              'Reunião'],
+    [['propaganda irregular','propaganda eleitoral'],    'Propaganda Eleitoral'],
+    [['condutas vedadas'],                               'Condutas Vedadas'],
+    [['uso da maquina','maquina publica'],               'Uso da Máquina'],
+    [['inelegibilidade','inelegivel'],                   'Inelegibilidade'],
+    [['ficha limpa'],                                    'Ficha Limpa'],
+    [['abuso de poder'],                                 'Abuso de Poder'],
+    [['captacao ilicita','captacao de sufragio','compra de voto'], 'Captação de Sufrágio'],
+    [['violencia politica','violencia de genero'],       'Violência Política'],
+    [['distribuicao'],                                   'Material p/ Distribuição'],
+    [['publicac'],                                       'Publicações'],
+    [['evento'],                                         'Participação em Eventos'],
+    [['gastos','despesa'],                               'Gastos de Campanha'],
+    [['certidao'],                                       'Certidão'],
+    [['doacao'],                                         'Doação'],
+    [['fisico','adesivo','boton','outdoor'],              'Material Físico'],
+    [['documento'],                                      'Documentos'],
+    [['jingle'],                                         'Jingle'],
+    [['denuncia','representacao'],                       'Denúncia'],
+    [['afastamento'],                                    'Afastamento'],
+    [['inteligencia artificial'],                        'Inteligência Artificial'],
+    [['live'],                                           'Live'],
+    [['nome','campanha'],                                'Nome na Campanha'],
+    [['pre-campanha','pre campanha','periodo pre'],      'Pré-Campanha'],
+    [['proporcional'],                                   'Sistema Proporcional'],
+    [['conta','reprov'],                                 'Contas Reprovadas'],
+    [['cassacao','cassac'],                              'Cassação'],
+    [['multa'],                                          'Multa'],
+    [['crime eleitoral','penal eleitoral','acao penal'], 'Penal Eleitoral'],
+    [['recurso'],                                        'Recurso'],
+    [['registro de candidatura'],                        'Registro de Candidatura'],
+    [['prestacao de contas'],                            'Prestação de Contas'],
+    [['coligacao','federacao'],                          'Coligação/Federação'],
+    [['pesquisa eleitoral'],                             'Pesquisa Eleitoral'],
+    [['debate'],                                         'Debate'],
+    [['filiacao'],                                       'Filiação Partidária'],
+    [['horario eleitoral','hgpe'],                       'HGPE'],
+    [['financiamento'],                                  'Financiamento'],
+    [['doador'],                                         'Doações'],
+    [['cabo eleitoral'],                                 'Cabos Eleitorais'],
+    [['mesario'],                                        'Mesário'],
+    [['urna','sistema eleitoral'],                       'Sistema Eleitoral'],
   ];
 
-  document.getElementById('salary-grid').innerHTML = cards.map(c =>
-    `<div class="sal-card${c.hl?' highlight':''}">
-      <div class="sal-period">${c.period}</div>
-      <div class="sal-value">${c.value}</div>
-      <div class="sal-delta">${c.delta}</div>
-    </div>`
-  ).join('');
+  for (const [keys, label] of regras) {
+    // Regras com dois termos no array e ambos sem espaço = condição AND
+    const multiWord = keys.filter(k => !k.includes(' '));
+    const singlePhrases = keys.filter(k => k.includes(' '));
 
-  const p = DB[cargo].plantao;
-  document.getElementById('plantao-grid').innerHTML = Object.entries(p).map(([k,v]) =>
-    `<div class="plantao-item"><div class="plantao-label">${k}</div><div class="plantao-val">${v}</div></div>`
-  ).join('');
+    // Verifica frases completas primeiro
+    if (singlePhrases.some(k => o.includes(k))) return label;
 
-  res.classList.add('show');
-  res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // Se a regra tem exatamente dois termos simples e são da mesma entrada: AND
+    if (multiWord.length === 2 && keys.length === 2 && !keys.some(k=>k.includes(' '))) {
+      if (multiWord.every(k => o.includes(k))) return label;
+    } else {
+      // OR entre os termos
+      if (multiWord.some(k => o.includes(k))) return label;
+    }
+  }
+
+  // Último recurso: pega o primeiro fragmento da ementa (antes do primeiro ponto)
+  const primeiroPonto = obs.split('.')[0].trim();
+  if (primeiroPonto && primeiroPonto.length >= 3 && primeiroPonto.length <= 60) {
+    return primeiroPonto;
+  }
+
+  return 'Outros';
 }
 
-function togGuide(id) {
-  const hdr = document.querySelector('#'+id+' .guide-block-header');
-  const body = document.getElementById(id+'-body');
-  const isOpen = body.classList.contains('open');
-  document.querySelectorAll('.guide-block-body').forEach(b => b.classList.remove('open'));
-  document.querySelectorAll('.guide-block-header').forEach(h => h.classList.remove('open'));
-  if (!isOpen) { body.classList.add('open'); hdr.classList.add('open'); }
+function getRegiao(uf) {
+  const m={
+    Norte:['AC','AM','AP','PA','RO','RR','TO'],
+    Nordeste:['AL','BA','CE','MA','PB','PE','PI','RN','SE'],
+    'Centro-Oeste':['DF','GO','MS','MT'],
+    Sudeste:['ES','MG','RJ','SP'],
+    Sul:['PR','RS','SC']
+  };
+  for(const[r,ufs] of Object.entries(m)) if(ufs.includes(uf)) return r;
+  return 'Outro';
 }
+
+// ============================================================
+// FILTROS DROPDOWN
+// ============================================================
+const MESES_PT = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+function buildSelects() {
+  // --- Meses disponíveis ---
+  const meses = [...new Set(ALL_DATES.map(d => d.slice(0,7)))].sort();
+  const selMes = document.getElementById('sel-mes');
+  const curMes = selMes.value;
+  selMes.innerHTML = '<option value="todos">Todos os meses</option>';
+  meses.forEach(m => {
+    const [y, mo] = m.split('-');
+    const label = MESES_PT[parseInt(mo)] + ' ' + y;
+    selMes.innerHTML += `<option value="${m}" ${filtroMes===m?'selected':''}>${label}</option>`;
+  });
+  selMes.className = 'filter-select' + (filtroMes!=='todos'?' active':'');
+
+  // --- Dias filtrados pelo mês selecionado ---
+  const diasBase = filtroMes==='todos'
+    ? ALL_DATES
+    : ALL_DATES.filter(d => d.startsWith(filtroMes));
+  const selDia = document.getElementById('sel-dia');
+  selDia.innerHTML = '<option value="todos">Todos os dias</option>';
+  diasBase.forEach(d => {
+    const [,m,dy] = d.split('-');
+    selDia.innerHTML += `<option value="${d}" ${filtroDia===d?'selected':''}>${dy}/${m}</option>`;
+  });
+  selDia.className = 'filter-select' + (filtroDia!=='todos'?' active':'');
+
+  // --- UFs ---
+  const selUF = document.getElementById('sel-uf');
+  selUF.innerHTML = '<option value="todos">Todos os estados</option>';
+  ALL_UFS.forEach(uf => {
+    selUF.innerHTML += `<option value="${uf}" ${filtroUF===uf?'selected':''}>${uf}</option>`;
+  });
+  selUF.className = 'filter-select' + (filtroUF!=='todos'?' active':'');
+}
+
+function setMes(v) {
+  filtroMes = v;
+  // Se o dia atual não pertence ao mês, reseta
+  if (v !== 'todos' && filtroDia !== 'todos' && !filtroDia.startsWith(v)) {
+    filtroDia = 'todos';
+  }
+  update();
+}
+function setDia(v)  { filtroDia = v; update(); }
+function setUF(v)   { filtroUF = v; update(); }
+function resetFiltros() { filtroMes='todos'; filtroDia='todos'; filtroUF='todos'; update(); }
+
+// ============================================================
+// KPIs
+// ============================================================
+function renderKPIs(rows) {
+  document.getElementById('kpi-total').textContent = rows.length;
+  document.getElementById('kpi-estados').textContent = new Set(rows.map(r=>r.uf)).size;
+  document.getElementById('kpi-nomes').textContent = new Set(rows.map(r=>r.nome.toLowerCase().trim())).size;
+  document.getElementById('kpi-dias').textContent = new Set(rows.map(r=>r.data)).size;
+  document.getElementById('total-filtrado').textContent = rows.length;
+}
+
+
+// ============================================================
+// DONUT MEIO
+// ============================================================
+function renderMeio(rows) {
+  const byMeio = countBy(rows, r => r.meio==='email'?'E-mail':'Telefone/WhatsApp');
+  const labels = Object.keys(byMeio);
+  const values = Object.values(byMeio);
+  const total  = values.reduce((a,b)=>a+b,0);
+  const cores  = [VERDE, PRATA];
+
+  if (chartMeio) chartMeio.destroy();
+  chartMeio = new Chart(document.getElementById('chartMeio').getContext('2d'), {
+    type: 'doughnut',
+    data: { labels, datasets:[{ data:values, backgroundColor:cores, borderWidth:0, hoverOffset:4 }] },
+    options: {
+      cutout: '66%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: INK,
+          callbacks: { label: c => ` ${c.label}: ${c.raw} (${(c.raw/total*100).toFixed(1)}%)` }
+        }
+      }
+    }
+  });
+
+  const leg = document.getElementById('legend-meio');
+  leg.innerHTML = '';
+  labels.forEach((l,i) => {
+    const pct = (values[i]/total*100).toFixed(1);
+    leg.innerHTML += `
+      <div class="legend-item">
+        <div class="legend-dot" style="background:${cores[i]}"></div>
+        <span class="legend-text">${l}</span>
+        <span class="legend-pct">${pct}%</span>
+      </div>
+      <div class="legend-sub">${values[i]} atendimentos</div>`;
+  });
+}
+
+// ============================================================
+// REGIÕES
+// ============================================================
+function renderRegioes(rows) {
+  const byReg = countBy(rows, r=>getRegiao(r.uf));
+  const ordem = ['Sudeste','Sul','Centro-Oeste','Nordeste','Norte'];
+  const cores  = {
+    Sudeste: VERDE,
+    Sul: VERDE_ACENTO,
+    'Centro-Oeste': '#4a9e7f',
+    Nordeste: PRATA,
+    Norte: '#6b9b8a'
+  };
+  const max = Math.max(...Object.values(byReg), 1);
+  const c = document.getElementById('reg-list');
+  c.innerHTML = '';
+  ordem.forEach(r => {
+    const cnt = byReg[r]||0;
+    const pct = (cnt/max*100).toFixed(1);
+    c.innerHTML += `<div>
+      <div class="reg-header"><span class="reg-nome">${r}</span><span class="reg-val">${cnt}</span></div>
+      <div class="reg-track"><div class="reg-fill" style="width:${pct}%;background:${cores[r]||VERDE}"></div></div>
+    </div>`;
+  });
+}
+
+// ============================================================
+// CATEGORIAS
+// ============================================================
+function renderCategorias(rows) {
+  const byCat = countBy(rows, r=>classObs(r.obs));
+  const sorted = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  const max = sorted[0]?.[1]||1;
+  document.getElementById('badge-cat').textContent = sorted.length + ' temas';
+  const c = document.getElementById('cat-list');
+  c.innerHTML = '';
+  sorted.forEach(([cat,cnt],i) => {
+    const pct = (cnt/max*100).toFixed(1);
+    // Title Case: primeira letra de cada palavra em maiúsculo, demais em minúsculo
+    const catFmt = cat.replace(/\S+/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+    c.innerHTML += `<div class="cat-item">
+      <span class="cat-name${i===0?' bold':''}">${catFmt}</span>
+      <div class="cat-track"><div class="cat-fill${i>0?' secondary':''}" style="width:${pct}%"></div></div>
+      <span class="cat-count">${cnt}</span>
+    </div>`;
+  });
+}
+
+
+// ============================================================
+// CHART TEMPORAL
+// ============================================================
+function renderTemporal(rows) {
+  const byDate = countBy(rows, r=>r.data);
+  const values = ALL_DATES.map(d=>byDate[d]||0);
+  const maxVal = Math.max(...values, 1);
+
+  if (chartTemporal) chartTemporal.destroy();
+  const ctx = document.getElementById('chartTemporal').getContext('2d');
+  const grad = ctx.createLinearGradient(0,0,0,180);
+  grad.addColorStop(0, 'rgba(0,104,81,0.14)');
+  grad.addColorStop(1, 'rgba(0,104,81,0.0)');
+
+  chartTemporal = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: DATE_LABELS,
+      datasets: [{
+        data: values,
+        borderColor: VERDE,
+        backgroundColor: grad,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: values.map(v=>v===maxVal?VERDE:'#fff'),
+        pointBorderColor: values.map(v=>v===maxVal?VERDE:VERDE),
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: INK,
+          callbacks: { label: c => ` ${c.raw} atendimentos` }
+        }
+      },
+      scales: {
+        x: { grid:{display:false}, border:{color:LINE}, ticks:{color:INK_MUTE, font:{family:"'Jost',sans-serif",size:10,weight:'500'}} },
+        y: { grid:{color:LINE}, border:{display:false}, ticks:{color:INK_MUTE, font:{size:10}}, beginAtZero:true }
+      }
+    }
+  });
+}
+
+// ============================================================
+// CHART UF (barras)
+// ============================================================
+function renderChartUF(rows) {
+  const byUF = countBy(rows, r=>r.uf);
+  const sorted = Object.entries(byUF).sort((a,b)=>b[1]-a[1]);
+  const labels = sorted.map(([k])=>k);
+  const values = sorted.map(([,v])=>v);
+
+  if (chartUF) chartUF.destroy();
+  chartUF = new Chart(document.getElementById('chartUF').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: values.map((_,i)=>i===0?VERDE:i<3?VERDE_ACENTO:'rgba(0,104,81,0.35)'),
+        borderRadius: 2,
+        borderSkipped: false,
+        barPercentage: 0.75
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: INK,
+          callbacks: { label: c => ` ${c.raw} atendimentos` }
+        }
+      },
+      scales: {
+        x: { grid:{display:false}, border:{color:LINE}, ticks:{color:INK_MUTE, font:{family:"'Jost',sans-serif",size:10,weight:'500'}} },
+        y: { grid:{color:LINE}, border:{display:false}, ticks:{color:INK_MUTE, font:{size:10}}, beginAtZero:true }
+      }
+    }
+  });
+}
+
+// ============================================================
+// REGISTRO DETALHADO
+// ============================================================
+function renderRegistros(rows) {
+  const tbody = document.getElementById('reg-det-tbody');
+  const empty = document.getElementById('reg-det-empty');
+  const badge = document.getElementById('badge-registros');
+
+  badge.textContent = rows.length + (rows.length === 1 ? ' registro' : ' registros');
+  tbody.innerHTML = '';
+
+  if (!rows.length) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  // Ordena: data desc, depois nome asc
+  const sorted = [...rows].sort((a, b) => {
+    if (b.data !== a.data) return b.data.localeCompare(a.data);
+    return a.nome.localeCompare(b.nome);
+  });
+
+  sorted.forEach((r, i) => {
+    const nomeFormatado = r.nome.split(' ')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+
+    const canalHtml = r.meio === 'email'
+      ? '<span class="canal-badge canal-email">✉ E-mail</span>'
+      : '<span class="canal-badge canal-tel">☎ Tel / WhatsApp</span>';
+
+    const cargoHtml = r.cargo
+      ? `<span class="cargo-badge">${r.cargo}</span>`
+      : `<span class="td-obs-empty">—</span>`;
+
+    const obsHtml = r.obs
+      ? `<div class="obs-tags-wrap">${obsToTags(r.obs)}</div>`
+      : `<span class="td-obs-empty">—</span>`;
+
+    tbody.innerHTML += `<tr>
+      <td class="td-num">${String(i + 1).padStart(2, '0')}</td>
+      <td class="td-data">${fmtDateBR(r.data)}</td>
+      <td class="td-nome">${nomeFormatado}</td>
+      <td class="td-uf"><span class="uf-badge">${r.uf}</span></td>
+      <td>${cargoHtml}</td>
+      <td>${canalHtml}</td>
+      <td>${obsHtml}</td>
+    </tr>`;
+  });
+}
+
+// ============================================================
+// OBS → TAGS (ementa para etiquetas)
+// ============================================================
+function obsToTags(obs) {
+  if (!obs || !obs.trim()) return '';
+
+  const o = obs.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+
+  // Mapeamento de palavras-chave → rótulo da tag
+  const mapa = [
+    [['inelegibilidade','inelegivel'],            'Inelegibilidade'],
+    [['ficha limpa'],                             'Ficha Limpa'],
+    [['abuso de poder economico','abuso de poder'],'Abuso de Poder'],
+    [['captacao ilicita','captacao de sufragio'],  'Captação de Sufrágio'],
+    [['violencia politica','violencia de genero'], 'Violência Política'],
+    [['propaganda irregular','propaganda eleitoral'],'Propaganda'],
+    [['condutas vedadas'],                         'Condutas Vedadas'],
+    [['uso da maquina','maquina publica'],          'Máquina Pública'],
+    [['vaquinha','financiamento coletivo'],         'Vaquinha'],
+    [['desincompatibiliz'],                        'Desincompatibilização'],
+    [['impulsionamento'],                          'Impulsionamento'],
+    [['video','videos'],                           'Vídeos'],
+    [['cnpj'],                                     'CNPJ'],
+    [['material','distribuicao'],                  'Material'],
+    [['publicac'],                                 'Publicações'],
+    [['evento'],                                   'Eventos'],
+    [['gastos','despesa'],                         'Gastos'],
+    [['dupla filia'],                              'Dupla Filiação'],
+    [['certidao de filia'],                        'Certidão Filiação'],
+    [['certidao'],                                 'Certidão'],
+    [['doacao'],                                   'Doação'],
+    [['fisico','adesivo','outdoor','boton'],        'Material Físico'],
+    [['jingle'],                                   'Jingle'],
+    [['denuncia','representacao'],                 'Denúncia'],
+    [['afastamento'],                              'Afastamento'],
+    [['inteligencia artificial'],                  'IA'],
+    [['live'],                                     'Live'],
+    [['cassa','cassacao'],                         'Cassação'],
+    [['multa'],                                    'Multa'],
+    [['crime eleitoral','penal eleitoral'],         'Penal Eleitoral'],
+    [['recurso'],                                  'Recurso'],
+    [['registro de candidatura','registro'],        'Registro'],
+    [['prestacao de contas','contas'],              'Contas'],
+    [['coligacao','federacao'],                    'Coligação/Federação'],
+    [['pesquisa'],                                 'Pesquisa Eleitoral'],
+    [['reuniao'],                                  'Reunião'],
+    [['debate'],                                   'Debate'],
+  ];
+
+  // Paleta de cores para as tags (cicla)
+  const paleta = [
+    { bg: 'rgba(0,104,81,0.10)',  border: 'rgba(0,104,81,0.28)',  color: '#006851' },
+    { bg: 'rgba(0,161,112,0.10)', border: 'rgba(0,161,112,0.28)', color: '#007a55' },
+    { bg: 'rgba(174,173,179,0.18)', border: 'rgba(174,173,179,0.45)', color: '#5a5a62' },
+    { bg: 'rgba(26,26,26,0.07)',  border: 'rgba(26,26,26,0.18)',  color: '#3a3a3a' },
+  ];
+
+  const tags = [];
+  const usadas = new Set();
+
+  for (const [keys, label] of mapa) {
+    if (usadas.has(label)) continue;
+    if (keys.some(k => o.includes(k))) {
+      tags.push(label);
+      usadas.add(label);
+    }
+  }
+
+  // Divide a ementa por pontos para extrair termos não mapeados como tags brutas
+  if (tags.length === 0) {
+    const partes = obs.split(/\.\s+/).map(p => p.trim()).filter(p => p.length > 2 && p.length < 50);
+    partes.slice(0, 3).forEach(p => tags.push(p));
+  }
+
+  if (!tags.length) return `<span class="obs-tag" style="background:rgba(174,173,179,0.18);border:1px solid rgba(174,173,179,0.45);color:#5a5a62">${obs.slice(0,60).toUpperCase()}${obs.length>60?'…':''}</span>`;
+
+  return tags.map((t, i) => {
+    const p = paleta[i % paleta.length];
+    return `<span class="obs-tag" style="background:${p.bg};border:1px solid ${p.border};color:${p.color}">${t.toUpperCase()}</span>`;
+  }).join('');
+}
+
+// ============================================================
+// CONTENCIOSO
+// ============================================================
+function renderContencioso(rows) {
+  const tbody = document.getElementById('cont-tbody');
+  const empty = document.getElementById('cont-empty');
+  const badge = document.getElementById('badge-contencioso');
+
+  if (!tbody) return;
+
+  badge.textContent = rows.length + (rows.length === 1 ? ' processo' : ' processos');
+  tbody.innerHTML = '';
+
+  if (!rows.length) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  rows.forEach((r, i) => {
+    const nomeFormatado = r.nome.split(' ')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+
+    const estadoHtml = r.estado
+      ? `<span class="uf-badge">${r.estado.toUpperCase()}</span>`
+      : `<span style="color:var(--line-strong)">—</span>`;
+
+    const procHtml = r.processo
+      ? `<span class="proc-num">${r.processo}</span>`
+      : `<span style="color:var(--line-strong)">—</span>`;
+
+    tbody.innerHTML += `<tr>
+      <td class="td-num">${String(i + 1).padStart(2, '0')}</td>
+      <td class="td-uf" style="text-align:left">${estadoHtml}</td>
+      <td class="td-nome">${nomeFormatado || '—'}</td>
+      <td class="td-obs-text">${r.assunto || '—'}</td>
+      <td>${procHtml}</td>
+      <td class="td-obs-text">${r.foro || '—'}</td>
+    </tr>`;
+  });
+}
+
+// ============================================================
+// UPDATE GERAL
+// ============================================================
+function update() {
+  const rows = getFiltered();
+  buildSelects();
+  renderKPIs(rows);
+  renderMeio(rows);
+  renderRegioes(rows);
+  renderCategorias(rows);
+  renderTemporal(rows);
+  renderChartUF(rows);
+  renderRegistros(rows);
+  renderContencioso(ROWS_CONTENCIOSO);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+Chart.defaults.font.family = "'Jost', sans-serif";
+Chart.defaults.color = INK_MUTE;
+
+document.getElementById('data-hoje').textContent =
+  new Date().toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'});
+
+// Carrega dados imediatamente e agenda auto-refresh
+loadData();
+setInterval(loadData, REFRESH_INTERVAL_MS);
 </script>
 </body>
 </html>
