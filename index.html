@@ -816,7 +816,7 @@
           </thead>
           <tbody id="reg-det-tbody"></tbody>
         </table>
-        </div><!-- /.reg-table-scroll -->
+        </div>
         <div class="reg-det-empty" id="reg-det-empty" style="display:none">Nenhum registro para exibir.</div>
       </div>
     </div>
@@ -847,7 +847,7 @@
           </thead>
           <tbody id="cont-tbody"></tbody>
         </table>
-        </div><!-- /.reg-table-scroll -->
+        </div>
         <div class="reg-det-empty" id="cont-empty" style="display:none">Nenhum processo para exibir.</div>
       </div>
     </div>
@@ -871,24 +871,8 @@
 </footer>
 
 <script>
-// ============================================================
-// CONFIGURAÇÃO — ÚNICA LINHA QUE VOCÊ PRECISA ALTERAR
-// ============================================================
-// Cole aqui a URL de exportação CSV da sua planilha.
-// Como obter: Arquivo → Compartilhar → Publicar na Web
-//             → selecione a aba correta → formato CSV → Publicar
-//             → copie o link gerado
-//
-// Formato esperado: https://docs.google.com/spreadsheets/d/SEU_ID/pub?gid=NUMERO_DA_ABA&single=true&output=csv
-//
-// URLs definidas abaixo em SHEET_URLS
-
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
-
-// ============================================================
-// ESTADO GLOBAL
-// ============================================================
 let ROWS = [];
 let ROWS_CONTENCIOSO = [];
 let ALL_DATES = [];
@@ -913,7 +897,6 @@ function parseCSV(text) {
   const lines = text.trim().split('\n');
   if (lines.length < 2) return [];
 
-  // Detecta o separador (vírgula ou ponto e vírgula)
   const header = lines[0];
   const sep = header.includes(';') ? ';' : ',';
 
@@ -921,7 +904,6 @@ function parseCSV(text) {
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
     .replace(/[^a-z0-9]/g, ''));
 
-  // Mapeia nomes de colunas para os campos esperados
   const idx = {
     uf:    findCol(cols, ['uf','estado','state']),
     meio:  findCol(cols, ['meio','canal','via','channel']),
@@ -945,16 +927,13 @@ function parseCSV(text) {
 
     if (!uf && !nome) continue;
 
-    // Normaliza o meio para 'email' ou 'tel'
-    // Cobre: 'email', 'e-mail', 'e–mail' (travessão), '@', ou qualquer texto descritivo contendo essas variações
     const meioNorm = (() => {
-      const m = meio.normalize('NFD').replace(/[\u0300-\u036f]/g,''); // remove acentos
+      const m = meio.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
       if (m.includes('@')) return 'email';
-      if (m.replace(/[\s\-–—]/g,'').includes('email')) return 'email'; // cobre e-mail, e–mail, e mail, email
+      if (m.replace(/[\s\-–—]/g,'').includes('email')) return 'email';
       return 'tel';
     })();
 
-    // Normaliza a data para YYYY-MM-DD
     const data = parseDate(raw);
     if (!data) continue;
 
@@ -1024,23 +1003,40 @@ function splitCSVLine(line, sep) {
   return result;
 }
 
+// ============================================================
+// PARSE DATE — formato brasileiro DD/MM/AAAA exclusivamente
+// ============================================================
 function parseDate(raw) {
   if (!raw) return null;
-  // Tenta YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-  // Tenta DD/MM/YYYY
+
+  // DD/MM/YYYY (formato padrão brasileiro)
   const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
-  // Tenta DD/MM/YY
+  if (m) {
+    const dd = m[1].padStart(2, '0');
+    const mm = m[2].padStart(2, '0');
+    const yyyy = m[3];
+    // Valida limites básicos: dia 1–31, mês 1–12
+    if (parseInt(dd) < 1 || parseInt(dd) > 31) return null;
+    if (parseInt(mm) < 1 || parseInt(mm) > 12) return null;
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  // DD/MM/AA (abreviado, ex: 01/06/26)
   const m2 = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
-  if (m2) return `20${m2[3]}-${m2[2].padStart(2,'0')}-${m2[1].padStart(2,'0')}`;
+  if (m2) {
+    const dd = m2[1].padStart(2, '0');
+    const mm = m2[2].padStart(2, '0');
+    if (parseInt(dd) < 1 || parseInt(dd) > 31) return null;
+    if (parseInt(mm) < 1 || parseInt(mm) > 12) return null;
+    return `20${m2[3]}-${mm}-${dd}`;
+  }
+
   return null;
 }
 
 // ============================================================
-// CARGA DE DADOS (fetch ao Google Sheets)
+// CARGA DE DADOS
 // ============================================================
-// URL de publicação CSV gerada pelo Google Sheets
 const SHEET_URLS = [
   'https://docs.google.com/spreadsheets/d/e/2PACX-1vTyZv4H_vCerCXXomVkoGHyo05Dl7kOmYG1AuQ8qc1TIoFOlCLXX_VqKRAc8APxZpXeUiKuhN5EoTRk/pub?gid=679125338&single=true&output=csv',
 ];
@@ -1051,7 +1047,6 @@ async function tryFetch(url) {
   const res = await fetch(url + '&cachebust=' + Date.now(), { cache: 'no-store' });
   if (!res.ok) throw new Error('HTTP ' + res.status);
   const text = await res.text();
-  // Verifica se retornou HTML de erro (login redirect) em vez de CSV
   if (text.trim().startsWith('<')) throw new Error('Retornou HTML — planilha não pública');
   return text;
 }
@@ -1070,7 +1065,6 @@ async function loadData() {
     }
   }
 
-  // Busca contencioso em paralelo (silencioso se falhar)
   let textContencioso = null;
   try {
     textContencioso = await tryFetch(SHEET_CONTENCIOSO_URL);
@@ -1093,7 +1087,6 @@ async function loadData() {
     DATE_LABELS = ALL_DATES.map(d => { const [,m,dy]=d.split('-'); return dy+'/'+m; });
     ALL_UFS = [...new Set(ROWS.map(r=>r.uf))].sort();
 
-    // Processa contencioso
     if (textContencioso) {
       try {
         ROWS_CONTENCIOSO = parseCSVContencioso(textContencioso);
@@ -1173,13 +1166,10 @@ function countBy(arr, fn) {
 function classObs(obs) {
   if (!obs || !obs.trim()) return 'Consulta Geral';
 
-  // Normaliza: minúsculas + remove acentos — resolve discrepâncias de encoding do Google Sheets
   const o = obs.toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .trim();
 
-  // Cada entrada: [array de palavras-chave normalizadas, rótulo]
-  // A ordem importa: mais específico primeiro
   const regras = [
     [['dupla filia'],                                    'Dupla Filiação'],
     [['certidao de filia'],                              'Certidão de Filiação'],
@@ -1233,23 +1223,18 @@ function classObs(obs) {
   ];
 
   for (const [keys, label] of regras) {
-    // Regras com dois termos no array e ambos sem espaço = condição AND
     const multiWord = keys.filter(k => !k.includes(' '));
     const singlePhrases = keys.filter(k => k.includes(' '));
 
-    // Verifica frases completas primeiro
     if (singlePhrases.some(k => o.includes(k))) return label;
 
-    // Se a regra tem exatamente dois termos simples e são da mesma entrada: AND
     if (multiWord.length === 2 && keys.length === 2 && !keys.some(k=>k.includes(' '))) {
       if (multiWord.every(k => o.includes(k))) return label;
     } else {
-      // OR entre os termos
       if (multiWord.some(k => o.includes(k))) return label;
     }
   }
 
-  // Último recurso: pega o primeiro fragmento da ementa (antes do primeiro ponto)
   const primeiroPonto = obs.split('.')[0].trim();
   if (primeiroPonto && primeiroPonto.length >= 3 && primeiroPonto.length <= 60) {
     return primeiroPonto;
@@ -1276,10 +1261,8 @@ function getRegiao(uf) {
 const MESES_PT = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
 function buildSelects() {
-  // --- Meses disponíveis ---
   const meses = [...new Set(ALL_DATES.map(d => d.slice(0,7)))].sort();
   const selMes = document.getElementById('sel-mes');
-  const curMes = selMes.value;
   selMes.innerHTML = '<option value="todos">Todos os meses</option>';
   meses.forEach(m => {
     const [y, mo] = m.split('-');
@@ -1288,7 +1271,6 @@ function buildSelects() {
   });
   selMes.className = 'filter-select' + (filtroMes!=='todos'?' active':'');
 
-  // --- Dias filtrados pelo mês selecionado ---
   const diasBase = filtroMes==='todos'
     ? ALL_DATES
     : ALL_DATES.filter(d => d.startsWith(filtroMes));
@@ -1300,7 +1282,6 @@ function buildSelects() {
   });
   selDia.className = 'filter-select' + (filtroDia!=='todos'?' active':'');
 
-  // --- UFs ---
   const selUF = document.getElementById('sel-uf');
   selUF.innerHTML = '<option value="todos">Todos os estados</option>';
   ALL_UFS.forEach(uf => {
@@ -1311,7 +1292,6 @@ function buildSelects() {
 
 function setMes(v) {
   filtroMes = v;
-  // Se o dia atual não pertence ao mês, reseta
   if (v !== 'todos' && filtroDia !== 'todos' && !filtroDia.startsWith(v)) {
     filtroDia = 'todos';
   }
@@ -1331,7 +1311,6 @@ function renderKPIs(rows) {
   document.getElementById('kpi-dias').textContent = new Set(rows.map(r=>r.data)).size;
   document.getElementById('total-filtrado').textContent = rows.length;
 }
-
 
 // ============================================================
 // DONUT MEIO
@@ -1411,7 +1390,6 @@ function renderCategorias(rows) {
   c.innerHTML = '';
   sorted.forEach(([cat,cnt],i) => {
     const pct = (cnt/max*100).toFixed(1);
-    // Title Case: primeira letra de cada palavra em maiúsculo, demais em minúsculo
     const catFmt = cat.replace(/\S+/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
     c.innerHTML += `<div class="cat-item">
       <span class="cat-name${i===0?' bold':''}">${catFmt}</span>
@@ -1420,7 +1398,6 @@ function renderCategorias(rows) {
     </div>`;
   });
 }
-
 
 // ============================================================
 // CHART TEMPORAL
@@ -1526,7 +1503,6 @@ function renderRegistros(rows) {
   }
   empty.style.display = 'none';
 
-  // Ordena: data desc, depois nome asc
   const sorted = [...rows].sort((a, b) => {
     if (b.data !== a.data) return b.data.localeCompare(a.data);
     return a.nome.localeCompare(b.nome);
@@ -1562,14 +1538,13 @@ function renderRegistros(rows) {
 }
 
 // ============================================================
-// OBS → TAGS (ementa para etiquetas)
+// OBS → TAGS
 // ============================================================
 function obsToTags(obs) {
   if (!obs || !obs.trim()) return '';
 
   const o = obs.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 
-  // Mapeamento de palavras-chave → rótulo da tag
   const mapa = [
     [['inelegibilidade','inelegivel'],            'Inelegibilidade'],
     [['ficha limpa'],                             'Ficha Limpa'],
@@ -1610,7 +1585,6 @@ function obsToTags(obs) {
     [['debate'],                                   'Debate'],
   ];
 
-  // Paleta de cores para as tags (cicla)
   const paleta = [
     { bg: 'rgba(0,104,81,0.10)',  border: 'rgba(0,104,81,0.28)',  color: '#006851' },
     { bg: 'rgba(0,161,112,0.10)', border: 'rgba(0,161,112,0.28)', color: '#007a55' },
@@ -1629,7 +1603,6 @@ function obsToTags(obs) {
     }
   }
 
-  // Divide a ementa por pontos para extrair termos não mapeados como tags brutas
   if (tags.length === 0) {
     const partes = obs.split(/\.\s+/).map(p => p.trim()).filter(p => p.length > 2 && p.length < 50);
     partes.slice(0, 3).forEach(p => tags.push(p));
@@ -1711,7 +1684,6 @@ Chart.defaults.color = INK_MUTE;
 document.getElementById('data-hoje').textContent =
   new Date().toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'});
 
-// Carrega dados imediatamente e agenda auto-refresh
 loadData();
 setInterval(loadData, REFRESH_INTERVAL_MS);
 </script>
