@@ -551,6 +551,35 @@
     font-style: italic;
   }
 
+  /* ===== PAGINAÇÃO ===== */
+  .reg-pagination {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding-top: 14px;
+  }
+  .pag-btn {
+    background: var(--bg-elevated);
+    border: 1px solid var(--line-strong);
+    color: var(--ink-soft);
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-family: 'Jost', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .pag-btn:hover:not(:disabled) { border-color: var(--verde); color: var(--verde); }
+  .pag-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .pag-info {
+    font-family: 'Jost', sans-serif;
+    font-size: 11px;
+    color: var(--ink-mute);
+    letter-spacing: 0.03em;
+  }
+
   /* ===== CARGO BADGE ===== */
   .col-cargo { min-width: 130px; }
   .cargo-badge {
@@ -801,7 +830,7 @@
         <span class="chart-badge" id="badge-registros">— registros</span>
       </div>
       <div class="reg-table-wrap">
-        <div class="reg-table-scroll">
+        <div class="reg-table-scroll" id="reg-table-scroll">
         <table class="reg-det-table">
           <thead>
             <tr>
@@ -818,6 +847,11 @@
         </table>
         </div>
         <div class="reg-det-empty" id="reg-det-empty" style="display:none">Nenhum registro para exibir.</div>
+      </div>
+      <div class="reg-pagination" id="reg-pagination">
+        <button class="pag-btn" id="pag-prev" onclick="mudarPagina(-1)">‹ Anterior</button>
+        <span class="pag-info" id="pag-info">Página 1 de 1</span>
+        <button class="pag-btn" id="pag-next" onclick="mudarPagina(1)">Próxima ›</button>
       </div>
     </div>
   </div>
@@ -858,7 +892,7 @@
 <footer>
   <div class="footer-brand">
     <div class="footer-name">Monteiro e Monteiro Advogados Associados</div>
-    <div class="footer-web">www.monteiro.adv.br</div>
+    <div class="footer-web"><a href="https://www.monteiro.adv.br" style="color:inherit;text-decoration:none">www.monteiro.adv.br</a></div>
   </div>
   <div class="footer-contact">
     <a href="mailto:novo@monteiro.adv.br">novo@monteiro.adv.br</a><br>
@@ -872,8 +906,10 @@
 
 <script>
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+const REGISTROS_POR_PAGINA = 100;
 
 let ROWS = [];
+let ROWS_FILTRADAS = [];
 let ROWS_CONTENCIOSO = [];
 let ALL_DATES = [];
 let DATE_LABELS = [];
@@ -881,6 +917,7 @@ let ALL_UFS = [];
 let filtroMes  = 'todos';
 let filtroDia  = 'todos';
 let filtroUF   = 'todos';
+let paginaAtual = 1;
 let chartTemporal, chartMeio, chartUF;
 
 const VERDE        = '#006851';
@@ -901,7 +938,7 @@ function parseCSV(text) {
   const sep = header.includes(';') ? ';' : ',';
 
   const cols = header.split(sep).map(c => c.trim().toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
     .replace(/[^a-z0-9]/g, ''));
 
   const idx = {
@@ -928,7 +965,7 @@ function parseCSV(text) {
     if (!uf && !nome) continue;
 
     const meioNorm = (() => {
-      const m = meio.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const m = meio.normalize('NFD').replace(/[̀-ͯ]/g,'');
       if (m.includes('@')) return 'email';
       if (m.replace(/[\s\-–—]/g,'').includes('email')) return 'email';
       return 'tel';
@@ -937,7 +974,14 @@ function parseCSV(text) {
     const data = parseDate(raw);
     if (!data) continue;
 
-    rows.push({ uf, meio: meioNorm, nome, data, obs, cargo });
+    // Classificação de tema e tags calculada uma única vez aqui (no carregamento),
+    // em vez de a cada update() de filtro — evita recalcular ~50 regras de texto
+    // por linha toda vez que o usuário troca mês/dia/UF.
+    rows.push({
+      uf, meio: meioNorm, nome, data, obs, cargo,
+      tema: classObs(obs),
+      tagsHtml: obsToTags(obs)
+    });
   }
   return rows;
 }
@@ -953,7 +997,7 @@ function parseCSVContencioso(text) {
   const sep = header.includes(';') ? ';' : ',';
 
   const cols = header.split(sep).map(c => c.trim().toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
     .replace(/[^a-z0-9]/g, ''));
 
   const idx = {
@@ -1114,6 +1158,7 @@ async function loadData() {
 
     console.log('Dados carregados de:', usedUrl, '— Registros:', ROWS.length);
     console.log('Contencioso:', ROWS_CONTENCIOSO.length, 'registros');
+    paginaAtual = 1;
     update();
   } catch(e) {
     console.warn('Erro ao processar CSV:', e);
@@ -1167,7 +1212,7 @@ function classObs(obs) {
   if (!obs || !obs.trim()) return 'Consulta Geral';
 
   const o = obs.toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .trim();
 
   const regras = [
@@ -1243,307 +1288,13 @@ function classObs(obs) {
   return 'Outros';
 }
 
-function getRegiao(uf) {
-  const m={
-    Norte:['AC','AM','AP','PA','RO','RR','TO'],
-    Nordeste:['AL','BA','CE','MA','PB','PE','PI','RN','SE'],
-    'Centro-Oeste':['DF','GO','MS','MT'],
-    Sudeste:['ES','MG','RJ','SP'],
-    Sul:['PR','RS','SC']
-  };
-  for(const[r,ufs] of Object.entries(m)) if(ufs.includes(uf)) return r;
-  return 'Outro';
-}
-
-// ============================================================
-// FILTROS DROPDOWN
-// ============================================================
-const MESES_PT = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-
-function buildSelects() {
-  const meses = [...new Set(ALL_DATES.map(d => d.slice(0,7)))].sort();
-  const selMes = document.getElementById('sel-mes');
-  selMes.innerHTML = '<option value="todos">Todos os meses</option>';
-  meses.forEach(m => {
-    const [y, mo] = m.split('-');
-    const label = MESES_PT[parseInt(mo)] + ' ' + y;
-    selMes.innerHTML += `<option value="${m}" ${filtroMes===m?'selected':''}>${label}</option>`;
-  });
-  selMes.className = 'filter-select' + (filtroMes!=='todos'?' active':'');
-
-  const diasBase = filtroMes==='todos'
-    ? ALL_DATES
-    : ALL_DATES.filter(d => d.startsWith(filtroMes));
-  const selDia = document.getElementById('sel-dia');
-  selDia.innerHTML = '<option value="todos">Todos os dias</option>';
-  diasBase.forEach(d => {
-    const [,m,dy] = d.split('-');
-    selDia.innerHTML += `<option value="${d}" ${filtroDia===d?'selected':''}>${dy}/${m}</option>`;
-  });
-  selDia.className = 'filter-select' + (filtroDia!=='todos'?' active':'');
-
-  const selUF = document.getElementById('sel-uf');
-  selUF.innerHTML = '<option value="todos">Todos os estados</option>';
-  ALL_UFS.forEach(uf => {
-    selUF.innerHTML += `<option value="${uf}" ${filtroUF===uf?'selected':''}>${uf}</option>`;
-  });
-  selUF.className = 'filter-select' + (filtroUF!=='todos'?' active':'');
-}
-
-function setMes(v) {
-  filtroMes = v;
-  if (v !== 'todos' && filtroDia !== 'todos' && !filtroDia.startsWith(v)) {
-    filtroDia = 'todos';
-  }
-  update();
-}
-function setDia(v)  { filtroDia = v; update(); }
-function setUF(v)   { filtroUF = v; update(); }
-function resetFiltros() { filtroMes='todos'; filtroDia='todos'; filtroUF='todos'; update(); }
-
-// ============================================================
-// KPIs
-// ============================================================
-function renderKPIs(rows) {
-  document.getElementById('kpi-total').textContent = rows.length;
-  document.getElementById('kpi-estados').textContent = new Set(rows.map(r=>r.uf)).size;
-  document.getElementById('kpi-nomes').textContent = new Set(rows.map(r=>r.nome.toLowerCase().trim())).size;
-  document.getElementById('kpi-dias').textContent = new Set(rows.map(r=>r.data)).size;
-  document.getElementById('total-filtrado').textContent = rows.length;
-}
-
-// ============================================================
-// DONUT MEIO
-// ============================================================
-function renderMeio(rows) {
-  const byMeio = countBy(rows, r => r.meio==='email'?'E-mail':'Telefone/WhatsApp');
-  const labels = Object.keys(byMeio);
-  const values = Object.values(byMeio);
-  const total  = values.reduce((a,b)=>a+b,0);
-  const cores  = [VERDE, PRATA];
-
-  if (chartMeio) chartMeio.destroy();
-  chartMeio = new Chart(document.getElementById('chartMeio').getContext('2d'), {
-    type: 'doughnut',
-    data: { labels, datasets:[{ data:values, backgroundColor:cores, borderWidth:0, hoverOffset:4 }] },
-    options: {
-      cutout: '66%',
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: INK,
-          callbacks: { label: c => ` ${c.label}: ${c.raw} (${(c.raw/total*100).toFixed(1)}%)` }
-        }
-      }
-    }
-  });
-
-  const leg = document.getElementById('legend-meio');
-  leg.innerHTML = '';
-  labels.forEach((l,i) => {
-    const pct = (values[i]/total*100).toFixed(1);
-    leg.innerHTML += `
-      <div class="legend-item">
-        <div class="legend-dot" style="background:${cores[i]}"></div>
-        <span class="legend-text">${l}</span>
-        <span class="legend-pct">${pct}%</span>
-      </div>
-      <div class="legend-sub">${values[i]} atendimentos</div>`;
-  });
-}
-
-// ============================================================
-// REGIÕES
-// ============================================================
-function renderRegioes(rows) {
-  const byReg = countBy(rows, r=>getRegiao(r.uf));
-  const ordem = ['Sudeste','Sul','Centro-Oeste','Nordeste','Norte'];
-  const cores  = {
-    Sudeste: VERDE,
-    Sul: VERDE_ACENTO,
-    'Centro-Oeste': '#4a9e7f',
-    Nordeste: PRATA,
-    Norte: '#6b9b8a'
-  };
-  const max = Math.max(...Object.values(byReg), 1);
-  const c = document.getElementById('reg-list');
-  c.innerHTML = '';
-  ordem.forEach(r => {
-    const cnt = byReg[r]||0;
-    const pct = (cnt/max*100).toFixed(1);
-    c.innerHTML += `<div>
-      <div class="reg-header"><span class="reg-nome">${r}</span><span class="reg-val">${cnt}</span></div>
-      <div class="reg-track"><div class="reg-fill" style="width:${pct}%;background:${cores[r]||VERDE}"></div></div>
-    </div>`;
-  });
-}
-
-// ============================================================
-// CATEGORIAS
-// ============================================================
-function renderCategorias(rows) {
-  const byCat = countBy(rows, r=>classObs(r.obs));
-  const sorted = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
-  const max = sorted[0]?.[1]||1;
-  document.getElementById('badge-cat').textContent = sorted.length + ' temas';
-  const c = document.getElementById('cat-list');
-  c.innerHTML = '';
-  sorted.forEach(([cat,cnt],i) => {
-    const pct = (cnt/max*100).toFixed(1);
-    const catFmt = cat.replace(/\S+/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-    c.innerHTML += `<div class="cat-item">
-      <span class="cat-name${i===0?' bold':''}">${catFmt}</span>
-      <div class="cat-track"><div class="cat-fill${i>0?' secondary':''}" style="width:${pct}%"></div></div>
-      <span class="cat-count">${cnt}</span>
-    </div>`;
-  });
-}
-
-// ============================================================
-// CHART TEMPORAL
-// ============================================================
-function renderTemporal(rows) {
-  const byDate = countBy(rows, r=>r.data);
-  const values = ALL_DATES.map(d=>byDate[d]||0);
-  const maxVal = Math.max(...values, 1);
-
-  if (chartTemporal) chartTemporal.destroy();
-  const ctx = document.getElementById('chartTemporal').getContext('2d');
-  const grad = ctx.createLinearGradient(0,0,0,180);
-  grad.addColorStop(0, 'rgba(0,104,81,0.14)');
-  grad.addColorStop(1, 'rgba(0,104,81,0.0)');
-
-  chartTemporal = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: DATE_LABELS,
-      datasets: [{
-        data: values,
-        borderColor: VERDE,
-        backgroundColor: grad,
-        fill: true,
-        tension: 0.4,
-        pointBackgroundColor: values.map(v=>v===maxVal?VERDE:'#fff'),
-        pointBorderColor: values.map(v=>v===maxVal?VERDE:VERDE),
-        pointBorderWidth: 2,
-        pointRadius: 5,
-        pointHoverRadius: 7
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: INK,
-          callbacks: { label: c => ` ${c.raw} atendimentos` }
-        }
-      },
-      scales: {
-        x: { grid:{display:false}, border:{color:LINE}, ticks:{color:INK_MUTE, font:{family:"'Jost',sans-serif",size:10,weight:'500'}} },
-        y: { grid:{color:LINE}, border:{display:false}, ticks:{color:INK_MUTE, font:{size:10}}, beginAtZero:true }
-      }
-    }
-  });
-}
-
-// ============================================================
-// CHART UF (barras)
-// ============================================================
-function renderChartUF(rows) {
-  const byUF = countBy(rows, r=>r.uf);
-  const sorted = Object.entries(byUF).sort((a,b)=>b[1]-a[1]);
-  const labels = sorted.map(([k])=>k);
-  const values = sorted.map(([,v])=>v);
-
-  if (chartUF) chartUF.destroy();
-  chartUF = new Chart(document.getElementById('chartUF').getContext('2d'), {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        data: values,
-        backgroundColor: values.map((_,i)=>i===0?VERDE:i<3?VERDE_ACENTO:'rgba(0,104,81,0.35)'),
-        borderRadius: 2,
-        borderSkipped: false,
-        barPercentage: 0.75
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: INK,
-          callbacks: { label: c => ` ${c.raw} atendimentos` }
-        }
-      },
-      scales: {
-        x: { grid:{display:false}, border:{color:LINE}, ticks:{color:INK_MUTE, font:{family:"'Jost',sans-serif",size:10,weight:'500'}} },
-        y: { grid:{color:LINE}, border:{display:false}, ticks:{color:INK_MUTE, font:{size:10}}, beginAtZero:true }
-      }
-    }
-  });
-}
-
-// ============================================================
-// REGISTRO DETALHADO
-// ============================================================
-function renderRegistros(rows) {
-  const tbody = document.getElementById('reg-det-tbody');
-  const empty = document.getElementById('reg-det-empty');
-  const badge = document.getElementById('badge-registros');
-
-  badge.textContent = rows.length + (rows.length === 1 ? ' registro' : ' registros');
-  tbody.innerHTML = '';
-
-  if (!rows.length) {
-    empty.style.display = 'block';
-    return;
-  }
-  empty.style.display = 'none';
-
-  const sorted = [...rows].sort((a, b) => {
-    if (b.data !== a.data) return b.data.localeCompare(a.data);
-    return a.nome.localeCompare(b.nome);
-  });
-
-  sorted.forEach((r, i) => {
-    const nomeFormatado = r.nome.split(' ')
-      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-      .join(' ');
-
-    const canalHtml = r.meio === 'email'
-      ? '<span class="canal-badge canal-email">✉ E-mail</span>'
-      : '<span class="canal-badge canal-tel">☎ Tel / WhatsApp</span>';
-
-    const cargoHtml = r.cargo
-      ? `<span class="cargo-badge">${r.cargo}</span>`
-      : `<span class="td-obs-empty">—</span>`;
-
-    const obsHtml = r.obs
-      ? `<div class="obs-tags-wrap">${obsToTags(r.obs)}</div>`
-      : `<span class="td-obs-empty">—</span>`;
-
-    tbody.innerHTML += `<tr>
-      <td class="td-num">${String(i + 1).padStart(2, '0')}</td>
-      <td class="td-data">${fmtDateBR(r.data)}</td>
-      <td class="td-nome">${nomeFormatado}</td>
-      <td class="td-uf"><span class="uf-badge">${r.uf}</span></td>
-      <td>${cargoHtml}</td>
-      <td>${canalHtml}</td>
-      <td>${obsHtml}</td>
-    </tr>`;
-  });
-}
-
 // ============================================================
 // OBS → TAGS
 // ============================================================
 function obsToTags(obs) {
   if (!obs || !obs.trim()) return '';
 
-  const o = obs.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const o = obs.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
 
   const mapa = [
     [['inelegibilidade','inelegivel'],            'Inelegibilidade'],
@@ -1616,6 +1367,358 @@ function obsToTags(obs) {
   }).join('');
 }
 
+function getRegiao(uf) {
+  const m={
+    Norte:['AC','AM','AP','PA','RO','RR','TO'],
+    Nordeste:['AL','BA','CE','MA','PB','PE','PI','RN','SE'],
+    'Centro-Oeste':['DF','GO','MS','MT'],
+    Sudeste:['ES','MG','RJ','SP'],
+    Sul:['PR','RS','SC']
+  };
+  for(const[r,ufs] of Object.entries(m)) if(ufs.includes(uf)) return r;
+  return 'Outro';
+}
+
+// ============================================================
+// FILTROS DROPDOWN
+// ============================================================
+const MESES_PT = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+function buildSelects() {
+  const meses = [...new Set(ALL_DATES.map(d => d.slice(0,7)))].sort();
+  const selMes = document.getElementById('sel-mes');
+  const opcoesMes = meses.map(m => {
+    const [y, mo] = m.split('-');
+    const label = MESES_PT[parseInt(mo)] + ' ' + y;
+    return `<option value="${m}" ${filtroMes===m?'selected':''}>${label}</option>`;
+  });
+  selMes.innerHTML = '<option value="todos">Todos os meses</option>' + opcoesMes.join('');
+  selMes.className = 'filter-select' + (filtroMes!=='todos'?' active':'');
+
+  const diasBase = filtroMes==='todos'
+    ? ALL_DATES
+    : ALL_DATES.filter(d => d.startsWith(filtroMes));
+  const selDia = document.getElementById('sel-dia');
+  const opcoesDia = diasBase.map(d => {
+    const [,m,dy] = d.split('-');
+    return `<option value="${d}" ${filtroDia===d?'selected':''}>${dy}/${m}</option>`;
+  });
+  selDia.innerHTML = '<option value="todos">Todos os dias</option>' + opcoesDia.join('');
+  selDia.className = 'filter-select' + (filtroDia!=='todos'?' active':'');
+
+  const selUF = document.getElementById('sel-uf');
+  const opcoesUF = ALL_UFS.map(uf => `<option value="${uf}" ${filtroUF===uf?'selected':''}>${uf}</option>`);
+  selUF.innerHTML = '<option value="todos">Todos os estados</option>' + opcoesUF.join('');
+  selUF.className = 'filter-select' + (filtroUF!=='todos'?' active':'');
+}
+
+function setMes(v) {
+  filtroMes = v;
+  if (v !== 'todos' && filtroDia !== 'todos' && !filtroDia.startsWith(v)) {
+    filtroDia = 'todos';
+  }
+  paginaAtual = 1;
+  update();
+}
+function setDia(v)  { filtroDia = v; paginaAtual = 1; update(); }
+function setUF(v)   { filtroUF = v; paginaAtual = 1; update(); }
+function resetFiltros() { filtroMes='todos'; filtroDia='todos'; filtroUF='todos'; paginaAtual = 1; update(); }
+
+// ============================================================
+// KPIs
+// ============================================================
+function renderKPIs(rows) {
+  document.getElementById('kpi-total').textContent = rows.length;
+  document.getElementById('kpi-estados').textContent = new Set(rows.map(r=>r.uf)).size;
+  document.getElementById('kpi-nomes').textContent = new Set(rows.map(r=>r.nome.toLowerCase().trim())).size;
+  document.getElementById('kpi-dias').textContent = new Set(rows.map(r=>r.data)).size;
+  document.getElementById('total-filtrado').textContent = rows.length;
+}
+
+// ============================================================
+// DONUT MEIO
+// ============================================================
+function renderMeio(rows) {
+  const byMeio = countBy(rows, r => r.meio==='email'?'E-mail':'Telefone/WhatsApp');
+  const labels = Object.keys(byMeio);
+  const values = Object.values(byMeio);
+  const total  = values.reduce((a,b)=>a+b,0);
+  const cores  = [VERDE, PRATA];
+
+  if (chartMeio) {
+    chartMeio.data.labels = labels;
+    chartMeio.data.datasets[0].data = values;
+    chartMeio.data.datasets[0].backgroundColor = cores;
+    chartMeio.update();
+  } else {
+    chartMeio = new Chart(document.getElementById('chartMeio').getContext('2d'), {
+      type: 'doughnut',
+      data: { labels, datasets:[{ data:values, backgroundColor:cores, borderWidth:0, hoverOffset:4 }] },
+      options: {
+        cutout: '66%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: INK,
+            callbacks: { label: c => ` ${c.label}: ${c.raw} (${(c.raw/c.dataset.data.reduce((a,b)=>a+b,0)*100).toFixed(1)}%)` }
+          }
+        }
+      }
+    });
+  }
+
+  const legendas = labels.map((l,i) => {
+    const pct = (values[i]/total*100).toFixed(1);
+    return `
+      <div class="legend-item">
+        <div class="legend-dot" style="background:${cores[i]}"></div>
+        <span class="legend-text">${l}</span>
+        <span class="legend-pct">${pct}%</span>
+      </div>
+      <div class="legend-sub">${values[i]} atendimentos</div>`;
+  });
+  document.getElementById('legend-meio').innerHTML = legendas.join('');
+}
+
+// ============================================================
+// REGIÕES
+// ============================================================
+function renderRegioes(rows) {
+  const byReg = countBy(rows, r=>getRegiao(r.uf));
+  const ordem = ['Sudeste','Sul','Centro-Oeste','Nordeste','Norte'];
+  const cores  = {
+    Sudeste: VERDE,
+    Sul: VERDE_ACENTO,
+    'Centro-Oeste': '#4a9e7f',
+    Nordeste: PRATA,
+    Norte: '#6b9b8a'
+  };
+  const max = Math.max(...Object.values(byReg), 1);
+  const blocos = ordem.map(r => {
+    const cnt = byReg[r]||0;
+    const pct = (cnt/max*100).toFixed(1);
+    return `<div>
+      <div class="reg-header"><span class="reg-nome">${r}</span><span class="reg-val">${cnt}</span></div>
+      <div class="reg-track"><div class="reg-fill" style="width:${pct}%;background:${cores[r]||VERDE}"></div></div>
+    </div>`;
+  });
+  document.getElementById('reg-list').innerHTML = blocos.join('');
+}
+
+// ============================================================
+// CATEGORIAS (usa r.tema pré-calculado no parse — não reclassifica a cada filtro)
+// ============================================================
+function renderCategorias(rows) {
+  const byCat = countBy(rows, r=>r.tema);
+  const sorted = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  const max = sorted[0]?.[1]||1;
+  document.getElementById('badge-cat').textContent = sorted.length + ' temas';
+
+  const itens = sorted.map(([cat,cnt],i) => {
+    const pct = (cnt/max*100).toFixed(1);
+    const catFmt = cat.replace(/\S+/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+    return `<div class="cat-item">
+      <span class="cat-name${i===0?' bold':''}">${catFmt}</span>
+      <div class="cat-track"><div class="cat-fill${i>0?' secondary':''}" style="width:${pct}%"></div></div>
+      <span class="cat-count">${cnt}</span>
+    </div>`;
+  });
+  document.getElementById('cat-list').innerHTML = itens.join('');
+}
+
+// ============================================================
+// CHART TEMPORAL
+// ============================================================
+function renderTemporal(rows) {
+  const byDate = countBy(rows, r=>r.data);
+  const values = ALL_DATES.map(d=>byDate[d]||0);
+  const maxVal = Math.max(...values, 1);
+  const pointBg = values.map(v=>v===maxVal?VERDE:'#fff');
+
+  if (chartTemporal) {
+    const ctx = document.getElementById('chartTemporal').getContext('2d');
+    const grad = ctx.createLinearGradient(0,0,0,180);
+    grad.addColorStop(0, 'rgba(0,104,81,0.14)');
+    grad.addColorStop(1, 'rgba(0,104,81,0.0)');
+
+    chartTemporal.data.labels = DATE_LABELS;
+    chartTemporal.data.datasets[0].data = values;
+    chartTemporal.data.datasets[0].backgroundColor = grad;
+    chartTemporal.data.datasets[0].pointBackgroundColor = pointBg;
+    chartTemporal.update();
+  } else {
+    const ctx = document.getElementById('chartTemporal').getContext('2d');
+    const grad = ctx.createLinearGradient(0,0,0,180);
+    grad.addColorStop(0, 'rgba(0,104,81,0.14)');
+    grad.addColorStop(1, 'rgba(0,104,81,0.0)');
+
+    chartTemporal = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: DATE_LABELS,
+        datasets: [{
+          data: values,
+          borderColor: VERDE,
+          backgroundColor: grad,
+          fill: true,
+          tension: 0.4,
+          pointBackgroundColor: pointBg,
+          pointBorderColor: VERDE,
+          pointBorderWidth: 2,
+          pointRadius: 5,
+          pointHoverRadius: 7
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: INK,
+            callbacks: { label: c => ` ${c.raw} atendimentos` }
+          }
+        },
+        scales: {
+          x: { grid:{display:false}, border:{color:LINE}, ticks:{color:INK_MUTE, font:{family:"'Jost',sans-serif",size:10,weight:'500'}} },
+          y: { grid:{color:LINE}, border:{display:false}, ticks:{color:INK_MUTE, font:{size:10}}, beginAtZero:true }
+        }
+      }
+    });
+  }
+}
+
+// ============================================================
+// CHART UF (barras)
+// ============================================================
+function renderChartUF(rows) {
+  const byUF = countBy(rows, r=>r.uf);
+  const sorted = Object.entries(byUF).sort((a,b)=>b[1]-a[1]);
+  const labels = sorted.map(([k])=>k);
+  const values = sorted.map(([,v])=>v);
+  const cores = values.map((_,i)=>i===0?VERDE:i<3?VERDE_ACENTO:'rgba(0,104,81,0.35)');
+
+  if (chartUF) {
+    chartUF.data.labels = labels;
+    chartUF.data.datasets[0].data = values;
+    chartUF.data.datasets[0].backgroundColor = cores;
+    chartUF.update();
+  } else {
+    chartUF = new Chart(document.getElementById('chartUF').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          backgroundColor: cores,
+          borderRadius: 2,
+          borderSkipped: false,
+          barPercentage: 0.75
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: INK,
+            callbacks: { label: c => ` ${c.raw} atendimentos` }
+          }
+        },
+        scales: {
+          x: { grid:{display:false}, border:{color:LINE}, ticks:{color:INK_MUTE, font:{family:"'Jost',sans-serif",size:10,weight:'500'}} },
+          y: { grid:{color:LINE}, border:{display:false}, ticks:{color:INK_MUTE, font:{size:10}}, beginAtZero:true }
+        }
+      }
+    });
+  }
+}
+
+// ============================================================
+// REGISTRO DETALHADO (com paginação — evita jogar milhares de <tr> no DOM
+// de uma vez, e monta as linhas em array antes de um único innerHTML)
+// ============================================================
+function renderRegistros(rows) {
+  const tbody = document.getElementById('reg-det-tbody');
+  const empty = document.getElementById('reg-det-empty');
+  const badge = document.getElementById('badge-registros');
+  const pagWrap = document.getElementById('reg-pagination');
+
+  badge.textContent = rows.length + (rows.length === 1 ? ' registro' : ' registros');
+
+  if (!rows.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    pagWrap.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const sorted = [...rows].sort((a, b) => {
+    if (b.data !== a.data) return b.data.localeCompare(a.data);
+    return a.nome.localeCompare(b.nome);
+  });
+
+  const totalPaginas = Math.max(1, Math.ceil(sorted.length / REGISTROS_POR_PAGINA));
+  if (paginaAtual > totalPaginas) paginaAtual = totalPaginas;
+  if (paginaAtual < 1) paginaAtual = 1;
+  const inicio = (paginaAtual - 1) * REGISTROS_POR_PAGINA;
+  const pagina = sorted.slice(inicio, inicio + REGISTROS_POR_PAGINA);
+
+  const linhas = pagina.map((r, i) => {
+    const nomeFormatado = r.nome.split(' ')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+
+    const canalHtml = r.meio === 'email'
+      ? '<span class="canal-badge canal-email">✉ E-mail</span>'
+      : '<span class="canal-badge canal-tel">☎ Tel / WhatsApp</span>';
+
+    const cargoHtml = r.cargo
+      ? `<span class="cargo-badge">${r.cargo}</span>`
+      : `<span class="td-obs-empty">—</span>`;
+
+    const obsHtml = r.obs
+      ? `<div class="obs-tags-wrap">${r.tagsHtml}</div>`
+      : `<span class="td-obs-empty">—</span>`;
+
+    return `<tr>
+      <td class="td-num">${String(inicio + i + 1).padStart(2, '0')}</td>
+      <td class="td-data">${fmtDateBR(r.data)}</td>
+      <td class="td-nome">${nomeFormatado}</td>
+      <td class="td-uf"><span class="uf-badge">${r.uf}</span></td>
+      <td>${cargoHtml}</td>
+      <td>${canalHtml}</td>
+      <td>${obsHtml}</td>
+    </tr>`;
+  });
+
+  tbody.innerHTML = linhas.join('');
+  renderPaginacao(totalPaginas, sorted.length, inicio, pagina.length);
+}
+
+function renderPaginacao(totalPaginas, totalRegistros, inicio, qtdNaPagina) {
+  const wrap = document.getElementById('reg-pagination');
+  const info = document.getElementById('pag-info');
+  const prev = document.getElementById('pag-prev');
+  const next = document.getElementById('pag-next');
+
+  if (totalRegistros <= REGISTROS_POR_PAGINA) {
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = 'flex';
+  info.textContent = `Página ${paginaAtual} de ${totalPaginas} · ${inicio + 1}–${inicio + qtdNaPagina} de ${totalRegistros}`;
+  prev.disabled = paginaAtual <= 1;
+  next.disabled = paginaAtual >= totalPaginas;
+}
+
+function mudarPagina(delta) {
+  paginaAtual += delta;
+  renderRegistros(ROWS_FILTRADAS);
+  const scroll = document.getElementById('reg-table-scroll');
+  if (scroll) scroll.scrollTo(0, 0);
+}
+
 // ============================================================
 // CONTENCIOSO
 // ============================================================
@@ -1627,15 +1730,15 @@ function renderContencioso(rows) {
   if (!tbody) return;
 
   badge.textContent = rows.length + (rows.length === 1 ? ' processo' : ' processos');
-  tbody.innerHTML = '';
 
   if (!rows.length) {
+    tbody.innerHTML = '';
     empty.style.display = 'block';
     return;
   }
   empty.style.display = 'none';
 
-  rows.forEach((r, i) => {
+  const linhas = rows.map((r, i) => {
     const nomeFormatado = r.nome.split(' ')
       .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
       .join(' ');
@@ -1648,7 +1751,7 @@ function renderContencioso(rows) {
       ? `<span class="proc-num">${r.processo}</span>`
       : `<span style="color:var(--line-strong)">—</span>`;
 
-    tbody.innerHTML += `<tr>
+    return `<tr>
       <td class="td-num">${String(i + 1).padStart(2, '0')}</td>
       <td class="td-uf" style="text-align:left">${estadoHtml}</td>
       <td class="td-nome">${nomeFormatado || '—'}</td>
@@ -1657,21 +1760,23 @@ function renderContencioso(rows) {
       <td class="td-obs-text">${r.foro || '—'}</td>
     </tr>`;
   });
+
+  tbody.innerHTML = linhas.join('');
 }
 
 // ============================================================
 // UPDATE GERAL
 // ============================================================
 function update() {
-  const rows = getFiltered();
+  ROWS_FILTRADAS = getFiltered();
   buildSelects();
-  renderKPIs(rows);
-  renderMeio(rows);
-  renderRegioes(rows);
-  renderCategorias(rows);
-  renderTemporal(rows);
-  renderChartUF(rows);
-  renderRegistros(rows);
+  renderKPIs(ROWS_FILTRADAS);
+  renderMeio(ROWS_FILTRADAS);
+  renderRegioes(ROWS_FILTRADAS);
+  renderCategorias(ROWS_FILTRADAS);
+  renderTemporal(ROWS_FILTRADAS);
+  renderChartUF(ROWS_FILTRADAS);
+  renderRegistros(ROWS_FILTRADAS);
   renderContencioso(ROWS_CONTENCIOSO);
 }
 
