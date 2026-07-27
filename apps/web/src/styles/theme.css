@@ -1,0 +1,144 @@
+/* Paleta espelhada do dashboard existente (index.html) para consistência
+   visual entre os dois sistemas da Monteiro e Monteiro. */
+:root {
+  --bg: #f6f5f0;
+  --bg-card: #ffffff;
+  --bg-elevated: #faf9f5;
+  --ink: #1a1a1a;
+  --ink-soft: #3a3a3a;
+  --ink-mute: #8a8680;
+  --line: #e5e0d5;
+  --line-strong: #ccc8be;
+  --verde: #006851;
+  --verde-acento: #00a170;
+  --verde-soft: rgba(0, 104, 81, 0.08);
+  --verde-badge: rgba(0, 104, 81, 0.12);
+  --alerta: #b3261e;
+  --alerta-soft: rgba(179, 38, 30, 0.08);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 4px 14px rgba(0, 0, 0, 0.05);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Jost", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--bg-card);
+  border-right: 1px solid var(--line);
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar h1 {
+  font-size: 1rem;
+  color: var(--verde);
+  margin-bottom: 20px;
+}
+
+.sidebar a {
+  display: block;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.sidebar a.active,
+.sidebar a:hover {
+  background: var(--verde-soft);
+  color: var(--verde);
+}
+
+.content {
+  flex: 1;
+  padding: 32px;
+  overflow-y: auto;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: var(--verde-badge);
+  color: var(--verde);
+}
+
+.badge-alerta {
+  background: var(--alerta-soft);
+  color: var(--alerta);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+th {
+  color: var(--ink-mute);
+  font-weight: 500;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  background: var(--verde);
+  color: white;
+  font-size: 0.9rem;
+}
+
+button.secundario {
+  background: transparent;
+  color: var(--verde);
+  border: 1px solid var(--verde);
+}
+
+input {
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}

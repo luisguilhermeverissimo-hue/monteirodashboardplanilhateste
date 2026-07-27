@@ -1,0 +1,21 @@
+{
+  "name": "monteiro-processual",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sistema de Monitoramento, Saneamento e Peticionamento Processual - Monteiro e Monteiro Advogados Associados",
+  "workspaces": [
+    "apps/server",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev:server": "npm run dev --workspace=@monteiro/server",
+    "dev:web": "npm run dev --workspace=@monteiro/web",
+    "build": "npm run build --workspace=@monteiro/server && npm run build --workspace=@monteiro/web",
+    "test": "npm run test --workspace=@monteiro/server --if-present",
+    "typecheck": "npm run typecheck --workspace=@monteiro/server && npm run typecheck --workspace=@monteiro/web",
+    "lint": "npm run lint --workspace=@monteiro/server --if-present && npm run lint --workspace=@monteiro/web --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

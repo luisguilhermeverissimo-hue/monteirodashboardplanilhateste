@@ -1,0 +1,271 @@
+// Schema do domínio - Sistema de Monitoramento, Saneamento e Peticionamento Processual
+// Ver docs/especificacao-loy-integracao.md para a especificação funcional completa.
+//
+// Nota: o provider SQLite do Prisma não suporta enums nativos, por isso campos de
+// "tipo fechado" abaixo são String com o conjunto de valores válidos documentado no
+// comentário e validado na camada de aplicação (ver src/types). Ao migrar para
+// PostgreSQL (ver README), esses campos podem virar enums nativos do banco.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// --- Usuários e papéis (Espec. §6) ---
+
+model Usuario {
+  id        String   @id @default(cuid())
+  nome      String
+  email     String   @unique
+  senhaHash String
+  ativo     Boolean  @default(true)
+  criadoEm  DateTime @default(now())
+
+  papeis                  PapelUsuario[]
+  publicacoesAtribuidas   Publicacao[]        @relation("RedatorAtribuido")
+  minutasAutoria          Minuta[]
+  prazosConfirmados       Prazo[]             @relation("PrazoConfirmadoPor")
+  peticoesCriadas         PeticaoIntermediaria[]
+  sugestoesResolvidas     SugestaoDescoberta[]
+  eventosAuditoria        AuditoriaEvento[]
+}
+
+// Papel por usuário, opcionalmente restrito a um processo específico
+// (processoId nulo = papel global). Espec. §6: "um mesmo usuário pode
+// acumular papéis diferentes em processos diferentes".
+model PapelUsuario {
+  id         String   @id @default(cuid())
+  usuarioId  String
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id])
+  // Valores válidos: SANEADOR | REDATOR | PETICIONANTE | ADMIN
+  papel      String
+  processoId String?
+  processo   Processo? @relation(fields: [processoId], references: [id])
+  criadoEm   DateTime @default(now())
+
+  @@unique([usuarioId, papel, processoId])
+  @@index([usuarioId])
+}
+
+// --- Acervo (Espec. §4, §10.1, §10.4) ---
+
+model Processo {
+  id               String   @id @default(cuid())
+  cnj              String   @unique
+  autor            String
+  tribunal         String
+  // Ex.: "Eleitoral - Registro de Candidatura", "Eleitoral - Representacao",
+  // "Trabalhista", "Civel/FUNDEB" - usado pelo motor de prazos (Espec. §9.1)
+  naturezaJuridica String
+  // Valores válidos: PLANILHA | DESCOBERTA | MANUAL | CONSULTA_AVULSA (Espec. §4)
+  origem           String
+  sigiloso         Boolean  @default(false)
+  // Valores válidos: ATIVO | ARQUIVADO
+  status           String   @default("ATIVO")
+  ultimoEventoEm   DateTime?
+  criadoEm         DateTime @default(now())
+
+  papeis      PapelUsuario[]
+  movimentos  Movimento[]
+  documentos  Documento[]
+  publicacoes Publicacao[]
+
+  @@index([status])
+  @@index([naturezaJuridica])
+}
+
+// --- Motor de coleta (Espec. §3 Camada 1, §5) ---
+
+model Movimento {
+  id            String   @id @default(cuid())
+  processoId    String
+  processo      Processo @relation(fields: [processoId], references: [id])
+  loyMovementId String
+  data          DateTime
+  descricao     String
+  tipo          String?
+  capturedAt    DateTime @default(now())
+
+  documentos  Documento[]
+  publicacao  Publicacao?
+
+  @@unique([processoId, loyMovementId])
+  @@index([processoId, data])
+}
+
+model Documento {
+  id             String     @id @default(cuid())
+  processoId     String
+  processo       Processo   @relation(fields: [processoId], references: [id])
+  movimentoId    String?
+  movimento      Movimento? @relation(fields: [movimentoId], references: [id])
+  loyDocumentId  String
+  nome           String
+  // Nível de sigilo retornado pela Loy - controla acesso adicional
+  // (Espec. §11; ver revisão de segurança §1.4 para o modelo de controle de acesso)
+  secretLevel    Int        @default(0)
+  storagePath    String?
+  downloadedAt   DateTime?
+  criadoEm       DateTime   @default(now())
+
+  @@unique([processoId, loyDocumentId])
+}
+
+// Heartbeat do motor de coleta - ver docs/loy-integration-security-review.md §1.2
+// (falha silenciosa do cron é o risco central desta camada).
+model CollectorRun {
+  id                  String    @id @default(cuid())
+  iniciadoEm          DateTime  @default(now())
+  finalizadoEm        DateTime?
+  // Valores válidos: EM_ANDAMENTO | SUCESSO | ERRO
+  status              String    @default("EM_ANDAMENTO")
+  processosVerificados Int      @default(0)
+  erros               Int       @default(0)
+  detalhe             String?
+}
+
+// --- Fluxo de trabalho / máquina de estados (Espec. §7) ---
+
+model Publicacao {
+  id          String   @id @default(cuid())
+  processoId  String
+  processo    Processo @relation(fields: [processoId], references: [id])
+  movimentoId String   @unique
+  movimento   Movimento @relation(fields: [movimentoId], references: [id])
+
+  // NOVA -> TRIADA -> AGUARDANDO_REDACAO -> PRONTA_PROTOCOLO -> (APROVADA | DEVOLVIDA) -> PROTOCOLADA
+  // Publicações que não exigem resposta podem ir direto para TRATADA a partir de TRIADA.
+  status String @default("NOVA")
+
+  redatorId String?
+  redator   Usuario? @relation("RedatorAtribuido", fields: [redatorId], references: [id])
+
+  criadoEm DateTime @default(now())
+
+  minutas             Minuta[]
+  prazo               Prazo?
+  peticaoIntermediaria PeticaoIntermediaria?
+
+  @@index([status])
+  @@index([redatorId])
+}
+
+model Minuta {
+  id           String     @id @default(cuid())
+  publicacaoId String
+  publicacao   Publicacao @relation(fields: [publicacaoId], references: [id])
+  versao       Int
+  autorId      String
+  autor        Usuario    @relation(fields: [autorId], references: [id])
+  arquivoPath  String
+  observacao   String?
+  criadoEm     DateTime   @default(now())
+
+  @@unique([publicacaoId, versao])
+}
+
+// --- Motor de prazos (Espec. §9) ---
+
+// Regras de contagem como DADOS, não constantes no código - ver
+// docs/loy-integration-security-review.md §3/§4 (recomendação de maior
+// impacto: permitir ajuste de prazo sem novo deploy).
+model RegraPrazo {
+  id               String   @id @default(cuid())
+  codigo           String   @unique
+  descricao        String
+  // Valores válidos: CORRIDO | UTIL
+  tipoContagem     String
+  quantidadeDias   Int
+  // Janela de vigência da regra (ex.: período eleitoral especial). Nulo = sempre vigente.
+  janelaInicio     DateTime?
+  janelaFim        DateTime?
+  fundamentoLegal  String
+  // Exige o alerta de termo a quo (Espec. §9.2) antes de confirmação em um clique
+  exigeAlertaTermoAquo Boolean @default(false)
+  ativo            Boolean  @default(true)
+  criadoEm         DateTime @default(now())
+  atualizadoEm     DateTime @updatedAt
+}
+
+model Prazo {
+  id             String     @id @default(cuid())
+  publicacaoId   String     @unique
+  publicacao     Publicacao @relation(fields: [publicacaoId], references: [id])
+
+  regraAplicadaCodigo String
+  dataSugerida        DateTime
+  alertaTermoAquo     Boolean  @default(false)
+
+  dataConfirmada   DateTime?
+  confirmadoPorId  String?
+  confirmadoPor    Usuario?  @relation("PrazoConfirmadoPor", fields: [confirmadoPorId], references: [id])
+  confirmadoEm     DateTime?
+
+  // Valores válidos: ABERTO | CUMPRIDO | VENCIDO
+  status String @default("ABERTO")
+
+  criadoEm DateTime @default(now())
+
+  @@index([status])
+  @@index([dataConfirmada])
+}
+
+// --- Peticionamento (Espec. §5, §10.8) ---
+
+model PeticaoIntermediaria {
+  id                 String     @id @default(cuid())
+  publicacaoId       String     @unique
+  publicacao         Publicacao @relation(fields: [publicacaoId], references: [id])
+  loyIntermediateId  String?
+  // Valores válidos: RASCUNHO | ENVIADA | PROTOCOLADA | CANCELADA
+  status             String     @default("RASCUNHO")
+  criadoPorId        String
+  criadoPor          Usuario    @relation(fields: [criadoPorId], references: [id])
+  reciboPath         String?
+  criadoEm           DateTime   @default(now())
+  canceladoEm        DateTime?
+}
+
+// --- Descoberta de processos (Espec. §10.5) ---
+
+model SugestaoDescoberta {
+  id            String   @id @default(cuid())
+  cnj           String
+  autor         String
+  tribunal      String
+  // Valores válidos: PENDENTE | CONFIRMADA | DESCARTADA
+  status        String   @default("PENDENTE")
+  detectadoEm   DateTime @default(now())
+  resolvidoPorId String?
+  resolvidoPor  Usuario? @relation(fields: [resolvidoPorId], references: [id])
+  resolvidoEm   DateTime?
+
+  @@unique([cnj])
+}
+
+// --- Trilha de auditoria (Espec. §8) ---
+//
+// Append-only por convenção do Prisma Client (nenhum código de aplicação deve
+// chamar update/delete neste model - ver src/modules/auditoria/auditLog.ts).
+// A imposição real de "somente INSERT" deve ser feita por permissão de banco
+// (GRANT) antes de produção - ver docs/loy-integration-security-review.md §1.5.
+// hashAnterior/hash formam uma hash-chain para detectar adulteração retroativa.
+model AuditoriaEvento {
+  id            String   @id @default(cuid())
+  entidadeTipo  String
+  entidadeId    String
+  acao          String
+  usuarioId     String?
+  usuario       Usuario? @relation(fields: [usuarioId], references: [id])
+  detalhes      String?
+  criadoEm      DateTime @default(now())
+  hashAnterior  String?
+  hash          String
+
+  @@index([entidadeTipo, entidadeId])
+  @@index([criadoEm])
+}
