@@ -34,17 +34,18 @@ O `apps/web` **nunca** fala diretamente com a API Loy — sempre via `apps/serve
 Pré-requisitos: Node.js 20+.
 
 ```bash
-npm install
-
-# Banco local (gera apps/server/prisma/dev.db)
-npm run db:migrate --workspace=@monteiro/server
-
-# Dois terminais:
-npm run dev:server   # servidor-ponte em http://localhost:3333
-npm run dev:web      # interface em http://localhost:5173
+bash scripts/setup-local.sh
 ```
 
-Copie `apps/server/.env.example` para `apps/server/.env` e preencha as variáveis antes de subir o servidor (ver comentários no arquivo — nenhuma delas deve ter valor real de produção em ambiente de desenvolvimento).
+Isso instala dependências, cria os `.env` de cada app (a partir dos
+`.env.example`, sem sobrescrever se já existirem), gera um `JWT_SECRET` e
+prepara o banco (migrations + seed das regras de prazo). Depois:
+
+1. Edite `apps/server/.env` e preencha `LOY_API_BASE_URL`/`LOY_API_TOKEN` com valores reais (nunca comite esse arquivo — ver `.gitignore`).
+2. Crie seu usuário: `npm run usuario:criar --workspace=@monteiro/server -- --nome "..." --email "..." --senha "..." --papeis SANEADOR,REDATOR,PETICIONANTE,ADMIN`
+3. Em dois terminais: `npm run dev:server` (http://localhost:3333) e `npm run dev:web` (http://localhost:5173)
+
+Passo a passo completo, com troubleshooting, em [`docs/rodar-localmente.md`](docs/rodar-localmente.md).
 
 ## Estrutura de módulos do servidor (`apps/server/src/modules`)
 
