@@ -15,7 +15,8 @@
     "test": "vitest run",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "usuario:criar": "tsx scripts/criar-usuario.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.19.1",

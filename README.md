@@ -7,6 +7,7 @@ Este repositório também contém, na raiz (`index.html`), o dashboard de atendi
 A especificação funcional completa e a revisão de segurança estão em `docs/`:
 - [`docs/especificacao-loy-integracao.md`](docs/especificacao-loy-integracao.md) — especificação funcional (fonte da verdade do que construir)
 - [`docs/loy-integration-security-review.md`](docs/loy-integration-security-review.md) — addendum de segurança, LGPD, pendências e checklist por fase
+- [`docs/rodar-localmente.md`](docs/rodar-localmente.md) — como rodar com um token real da Loy (o ambiente remoto do Claude Code bloqueia `*.loylegal.com` por política de rede; isso precisa ser testado numa máquina com acesso normal à internet)
 
 ## Arquitetura (3 camadas, ver especificação §3)
 
